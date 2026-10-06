@@ -1,0 +1,2483 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pulses Swap 使用教程 · 交互动画版</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { height:100%; }
+  body {
+    background:#101314; color:#fff; overflow:hidden;
+    font-family:'Microsoft YaHei UI','Microsoft YaHei','Segoe UI',system-ui,sans-serif;
+  }
+  /* ===== 液态玻璃 (Liquid Glass · iOS 26 风格) ===== */
+  .liquid-glass {
+    backdrop-filter: blur(20px) saturate(1.6) brightness(1.05);
+    -webkit-backdrop-filter: blur(20px) saturate(1.6) brightness(1.05);
+    background: rgba(255,255,255,.45);
+    box-shadow:
+      inset 0 1px 1px rgba(255,255,255,.5),      /* 顶部高光 */
+      inset 0 -1px 1px rgba(255,255,255,.2),      /* 底部微光 */
+      inset 1px 0 1px rgba(255,255,255,.15),      /* 左侧光 */
+      inset -1px 0 1px rgba(255,255,255,.15),     /* 右侧光 */
+      0 2px 8px rgba(0,0,0,.08),                   /* 底部投影 */
+      0 0 0 .5px rgba(255,255,255,.3);            /* 边缘亮线 */
+    border: .5px solid rgba(255,255,255,.25);
+  }
+  .liquid-glass-dark {
+    backdrop-filter: blur(16px) saturate(1.4);
+    -webkit-backdrop-filter: blur(16px) saturate(1.4);
+    background: rgba(30,34,36,.5);
+    box-shadow:
+      inset 0 1px 1px rgba(255,255,255,.12),
+      inset 0 -1px 1px rgba(0,0,0,.15),
+      0 4px 16px rgba(0,0,0,.25),
+      0 0 0 .5px rgba(255,255,255,.08);
+    border: .5px solid rgba(255,255,255,.08);
+  }
+  /* 液态玻璃开关（仿 iOS 26） */
+  .lg-switch {
+    width:42px; height:26px; border-radius:13px; position:relative; cursor:pointer;
+    backdrop-filter: blur(8px) saturate(1.5);
+    -webkit-backdrop-filter: blur(8px) saturate(1.5);
+    background: rgba(120,120,128,.25);
+    box-shadow: inset 0 1px 2px rgba(0,0,0,.15), inset 0 -1px 1px rgba(255,255,255,.2),
+                0 0 0 .5px rgba(255,255,255,.15);
+    transition: background .35s cubic-bezier(.32,.72,0,1);
+  }
+  .lg-switch.on { background: rgba(91,168,154,.7); box-shadow: inset 0 1px 2px rgba(0,0,0,.1), inset 0 -1px 1px rgba(255,255,255,.25), 0 0 0 .5px rgba(127,212,193,.4); }
+  .lg-switch-knob {
+    width:22px; height:22px; border-radius:50%; background:rgba(255,255,255,.95);
+    position:absolute; top:2px; left:2px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.2), inset 0 1px 1px rgba(255,255,255,.8);
+    transition: left .35s cubic-bezier(.32,.72,0,1), transform .35s cubic-bezier(.34,1.3,.44,1);
+  }
+  .lg-switch.on .lg-switch-knob { left:18px; }
+  /* 液态玻璃滑块 */
+  .lg-slider-track {
+    height:6px; border-radius:3px; background:rgba(120,120,128,.2);
+    backdrop-filter: blur(6px) saturate(1.3);
+    -webkit-backdrop-filter: blur(6px) saturate(1.3);
+    box-shadow: inset 0 1px 1px rgba(0,0,0,.1);
+    position:relative;
+  }
+  .lg-slider-fill { height:100%; border-radius:3px; background:rgba(91,168,154,.8);
+    box-shadow: 0 0 8px rgba(91,168,154,.4); }
+  .lg-slider-knob { width:18px; height:18px; border-radius:50%;
+    background:rgba(255,255,255,.95); position:absolute; top:50%; transform:translate(-50%,-50%);
+    box-shadow: 0 1px 5px rgba(0,0,0,.2), inset 0 1px 1px rgba(255,255,255,.8),
+                0 0 0 .5px rgba(91,168,154,.2); }
+  #bg { position:fixed; inset:0; z-index:0;
+    background:
+      radial-gradient(1100px 550px at 18% 8%, rgba(91,168,154,.16), transparent 60%),
+      radial-gradient(900px 500px at 85% 88%, rgba(123,157,201,.12), transparent 60%),
+      #101314;
+  }
+  #bg::after { content:''; position:absolute; inset:0;
+    background-image:radial-gradient(rgba(255,255,255,.035) 1px, transparent 1px);
+    background-size:34px 34px; }
+  /* ===== 舞台 ===== */
+  #stage-wrap { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:1; }
+  #stage-clip { position:relative; flex-shrink:0; }
+  #stage { position:relative; }
+  #app-container { position:relative; }
+  /* ===== 高级字幕（fixed · 无边框 · WAAPI 逐词） ===== */
+  #vt-caption { font-family:'Microsoft YaHei UI','Microsoft YaHei',sans-serif; }
+  #vt-caption .cap-line { display:inline-block; }
+  #vt-caption .w { display:inline-block; color:#fff; font-size:26px; line-height:1.75;
+    font-weight:600; will-change:transform,opacity,filter;
+    text-shadow:0 3px 20px rgba(0,0,0,.9), 0 0 36px rgba(0,0,0,.7); }
+  #vt-caption .w.accent { color:#7fd4c1; font-weight:800; }
+  #vt-caption .w.big { font-size:38px; font-weight:800; letter-spacing:1px;
+    background:linear-gradient(120deg,#7fd4c1,#a8d8b9); -webkit-background-clip:text;
+    background-clip:text; -webkit-text-fill-color:transparent;
+    text-shadow:none; filter:drop-shadow(0 3px 14px rgba(127,212,193,.5)); }
+  #vt-caption .w.dim { color:#c2ccce; font-size:19px; font-weight:500; }
+  #vt-caption .cap-underline { display:block; height:2px; margin:12px auto 0; width:0;
+    background:linear-gradient(90deg,transparent,#5BA89A,transparent); border-radius:2px; }
+  /* ===== 片头 ===== */
+  #intro { position:fixed; inset:0; z-index:50; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:16px; transition:opacity .8s; }
+  #intro .logo { width:84px; height:84px; border-radius:22px; margin-bottom:6px;
+    background:linear-gradient(135deg,#5BA89A,#3D7A6E); display:flex; align-items:center;
+    justify-content:center; font-size:40px; font-weight:800; color:#fff;
+    box-shadow:0 16px 50px rgba(91,168,154,.4), inset 0 2px 8px rgba(255,255,255,.25);
+    animation:float 3.5s ease-in-out infinite; }
+  @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+  #intro h1 { font-size:42px; font-weight:800; letter-spacing:2px;
+    background:linear-gradient(120deg,#7fd4c1,#a8d8b9,#7b9dc9,#7fd4c1);
+    background-size:250% auto; -webkit-background-clip:text; background-clip:text;
+    -webkit-text-fill-color:transparent; animation:shine 5s linear infinite; }
+  @keyframes shine { to { background-position:250% center; } }
+  #intro p { color:#8a9597; font-size:15px; letter-spacing:5px; }
+  #intro .badges { display:flex; gap:10px; margin-top:4px; }
+  #intro .badge { padding:5px 16px; border:1px solid rgba(127,212,193,.25); border-radius:99px;
+    color:#7fd4c1; font-size:12px; letter-spacing:1px; background:rgba(91,168,154,.06); }
+  #play-btn { margin-top:24px; padding:15px 58px; font-size:17px; letter-spacing:7px;
+    background:linear-gradient(120deg,#5BA89A,#4A9285); color:#fff; border:none;
+    border-radius:99px; cursor:pointer; transition:transform .25s, box-shadow .25s;
+    box-shadow:0 10px 34px rgba(91,168,154,.45); font-family:inherit; font-weight:600; }
+  #play-btn:hover { transform:translateY(-3px) scale(1.04); box-shadow:0 16px 46px rgba(91,168,154,.6); }
+  /* ===== 顶部进度 ===== */
+  #progress { position:fixed; top:0; left:0; right:0; height:3px; z-index:60; background:rgba(255,255,255,.05); }
+  #progress-fill { height:100%; width:0%; border-radius:2px;
+    background:linear-gradient(90deg,#5BA89A,#7b9dc9); transition:width .6s; }
+  /* ===== 篇章横幅（背景高斯模糊） ===== */
+  #part-banner { position:fixed; inset:0; z-index:45; display:flex; align-items:center;
+    justify-content:center; pointer-events:none; opacity:0; transition:opacity .5s ease; }
+  #part-banner .inner { text-align:center; transform:scale(.9) translateY(20px);
+    transition:transform .6s cubic-bezier(.34,1.3,.44,1), opacity .5s; }
+  #part-banner .big { font-size:58px; font-weight:800; letter-spacing:6px;
+    background:linear-gradient(120deg,#7fd4c1,#7b9dc9); -webkit-background-clip:text;
+    background-clip:text; -webkit-text-fill-color:transparent;
+    filter:drop-shadow(0 4px 24px rgba(127,212,193,.4)); }
+  #part-banner .sub { color:#8a9597; font-size:16px; letter-spacing:8px; margin-top:10px; }
+  #blur-layer { position:fixed; inset:0; z-index:44; background:rgba(10,13,14,.4);
+    backdrop-filter:blur(14px) saturate(1.2); -webkit-backdrop-filter:blur(14px) saturate(1.2);
+    opacity:0; transition:opacity .5s; pointer-events:none; }
+  #stage-clip { transition:filter .5s; }
+  /* ===== 章节提示 ===== */
+  #chapter { position:fixed; top:24px; left:30px; z-index:60; opacity:0; transition:opacity .5s;
+    display:flex; align-items:center; gap:12px; }
+  #chapter .bar { width:4px; height:40px; border-radius:2px;
+    background:linear-gradient(180deg,#5BA89A,#7b9dc9); }
+  #chapter .num { font-size:11px; color:#7fd4c1; letter-spacing:3px; }
+  #chapter .name { font-size:19px; font-weight:700; margin-top:1px; }
+  /* ===== 底部控制条 ===== */
+  #controls { position:fixed; bottom:0; left:0; right:0; z-index:60;
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    padding:12px; background:linear-gradient(transparent, rgba(12,15,16,.9) 45%); }
+  #controls button { background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.12);
+    color:#cfd8d9; border-radius:9px; padding:7px 15px; font-size:13px; cursor:pointer;
+    transition:all .2s; font-family:inherit; }
+  #controls button:hover { background:rgba(127,212,193,.15); color:#fff; border-color:rgba(127,212,193,.3); }
+  #scene-nav { display:flex; gap:6px; margin:0 12px; max-width:46vw; overflow-x:auto; padding:4px 2px; }
+  #scene-nav::-webkit-scrollbar { height:0; }
+  #scene-nav .dot { width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,.16);
+    cursor:pointer; transition:all .3s; flex-shrink:0; }
+  #scene-nav .dot.dev { background:rgba(123,157,201,.3); }
+  #scene-nav .dot.active { background:#5BA89A; transform:scale(1.4); }
+  #scene-nav .dot.done { background:rgba(91,168,154,.5); }
+</style>
+</head>
+<body>
+<div id="bg"></div>
+<div id="progress"><div id="progress-fill"></div></div>
+<div id="blur-layer"></div>
+<div id="chapter"><div class="bar"></div><div><div class="num"></div><div class="name"></div></div></div>
+<div id="part-banner"><div class="inner"><div class="big"></div><div class="sub"></div></div></div>
+
+<div id="stage-wrap"><div id="stage-clip"><div id="stage"><div id="app-container"></div></div></div></div>
+
+<div id="intro">
+  <div class="logo">P</div>
+  <h1 id="intro-title">Pulses Swap 使用教程</h1>
+  <p id="intro-sub">TACZ 枪 包 一 键 切 换 工 具</p>
+  <div class="badges">
+    <div class="badge">玩家篇</div>
+    <div class="badge">开发者篇</div>
+    <div class="badge">交互式动画</div>
+  </div>
+  <button id="play-btn">开 始 演 示</button>
+</div>
+
+<div id="controls" style="display:none">
+  <button id="btn-replay">重播本段</button>
+  <div id="scene-nav"></div>
+  <button id="btn-full">从头播放</button>
+  <button id="btn-speed">1.0×</button>
+</div>
+
+<script>
+/* ============================================================
+ * icons.js — 自绘 SVG 图标库（零 emoji，根治 ？/� 乱码）
+ * 统一 24 视图框 · 1.7px 圆头描边 · currentColor
+ * ============================================================ */
+
+const VICONS = {
+  folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2.2 2.6H19a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/>',
+  folderOpen: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2.4H19a2 2 0 0 1 2 2v.6"/><path d="M3 7v10a2 2 0 0 0 2 2h13.2a2 2 0 0 0 1.94-1.5l1.7-6.1a1 1 0 0 0-.96-1.3H7.9a2 2 0 0 0-1.94 1.5L4.4 19"/>',
+  pack: '<path d="M12 3 4 7v10l8 4 8-4V7Z"/><path d="M4 7l8 4 8-4M12 11v10"/>',
+  zip: '<path d="M6 3h9l3 3v15H6Z"/><path d="M15 3v3h3"/><path d="M9.5 8v1.5M9.5 11v1.5M9.5 14v1.5"/>',
+  doc: '<path d="M6 3h9l3 3v15H6Z"/><path d="M15 3v3h3"/><path d="M9 13h6M9 16h6"/>',
+  refresh: '<path d="M20 12a8 8 0 1 1-2.5-5.8"/><path d="M20 3v4h-4"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  spark: '<path d="M12 3l1.9 5.3L19 10l-5.1 1.7L12 17l-1.9-5.3L5 10l5.1-1.7Z"/><path d="M18.5 15.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8Z"/>',
+  export: '<path d="M12 15V4"/><path d="m8 8 4-4 4 4"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>',
+  update: '<path d="M20 12a8 8 0 0 1-14.9 4"/><path d="M4 12a8 8 0 0 1 14.9-4"/><path d="M18.5 5.5V8h2.8M5.5 18.5V16H2.7"/>',
+  clipboard: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4a3 3 0 0 1 6 0"/><path d="M9 10h6M9 13.5h6M9 17h3"/>',
+  bolt: '<path d="M13 2 5 13h5l-1.5 9L19 10h-5.5Z"/>',
+  chevD: '<path d="m6 9 6 6 6-6"/>',
+  check: '<path d="m4.5 12.5 5 5 10-11"/>',
+  cross: '<path d="M6 6l12 12M18 6 6 18"/>',
+  dot: '<circle cx="12" cy="12" r="4.5"/>',
+  db: '<ellipse cx="12" cy="5.5" rx="8" ry="3"/><path d="M4 5.5v13c0 1.7 3.6 3 8 3s8-1.3 8-3v-13"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',
+  terminal: '<rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="m7 9 3.5 3L7 15M12.5 15H17"/>',
+  play: '<path d="M7 4.8v14.4L20 12Z"/>',
+  logo: '<path d="M5 4.5h14v15H5Z"/><path d="M5 10h14M9.5 10v9.5"/>',
+  save: '<path d="M5 3h11l3 3v15H5Z"/><path d="M8 3v6h7V3M8 21v-6h8v6"/>',
+  eye: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3"/>',
+};
+
+/** 生成内联 SVG（压缩单行，避免 \n 污染） */
+function VIcon(name, size = 16, color = null) {
+  const body = VICONS[name];
+  if (!body) return '';
+  const s = size, c = color ? `color:${color};` : '';
+  return `<svg class="vicon" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="${c}vertical-align:-0.15em;flex-shrink:0;display:inline-block;">${body}</svg>`;
+}
+
+/** 富文本渲染：先转义，再把已知 emoji 换成 SVG 图标（按钮/列表/日志通用） */
+const EMOJI_TO_ICON = {
+  '📂': 'folderOpen', '📁': 'folder', '🗂️': 'folder', '🗂': 'folder',
+  '📦': 'pack', '✨': 'spark', '⟳': 'refresh', '📤': 'export',
+  '🔄': 'update', '📋': 'clipboard', '⚡': 'bolt', '▼': 'chevD',
+  '✓': 'check', '✔': 'check', '✅': 'check', '✖': 'cross', '✗': 'cross',
+  '⊙': 'dot', '📄': 'doc', '⚠': 'warn',
+};
+VICONS.warn = '<path d="M12 3 2.5 20h19Z"/><path d="M12 9.5v4.5M12 17.2v.1"/>';
+
+function iconifyText(text, size = 13) {
+  // 先把 \n 换成 <br>（在 esc 和 SVG 替换之前）
+  let html = String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/\n/g, '<br>');
+  for (const [emoji, icon] of Object.entries(EMOJI_TO_ICON)) {
+    if (html.includes(emoji)) {
+      html = html.split(emoji).join(`<span class="vicon-w">${VIcon(icon, size)}</span>`);
+    }
+  }
+  return html;
+}
+
+</script>
+<script>
+/* ============================================================
+ * ctk-renderer.js — CustomTkinter 浅色水墨 UI 复刻 v2
+ * · 全部文本走 iconifyText（SVG 图标，零 emoji）
+ * · 右键菜单挂 body+fixed（视口坐标，零错位）
+ * · 弹窗关闭带渐出过渡
+ * · 列表项逐个滑入（APPLE 曲线）
+ * ============================================================ */
+
+class CtkRenderer {
+  constructor(container, model) {
+    this.container = container;
+    this.model = model;
+    this.theme = model.theme;
+    this.widgetEls = new Map();
+    this._dialogEl = null;
+    this._ctxMenu = null;
+  }
+
+  /* 文本图标化（全局 iconifyText，来自 icons.js） */
+  _fmt(text, size = 12) {
+    if (typeof iconifyText === 'function') return iconifyText(text, size);
+    return esc(text);
+  }
+
+  render() {
+    const t = this.theme, m = this.model;
+    this.container.innerHTML = '';
+    this.widgetEls.clear();
+    const win = el('div', 'ctk-window');
+    win.style.cssText = `
+      width:${m.window.width}px; height:${m.window.height}px;
+      background:${t.windowBg}; border-radius:10px; overflow:hidden;
+      box-shadow:0 30px 80px rgba(0,0,0,.55), 0 0 0 1px rgba(0,0,0,.08);
+      display:flex; flex-direction:column; position:relative;
+      font-family:'Microsoft YaHei UI','Microsoft YaHei','Segoe UI',sans-serif;
+      flex-shrink:0;`;
+    // 标题栏（mac 风格三圆点 + 标题）
+    const tb = el('div');
+    tb.style.cssText = `height:38px; display:flex; align-items:center;
+      padding:0 14px; flex-shrink:0; user-select:none; justify-content:space-between;
+      border-bottom:.5px solid ${t.divider};
+      backdrop-filter:blur(12px) saturate(1.4);
+      -webkit-backdrop-filter:blur(12px) saturate(1.4);
+      background:rgba(255,255,255,.6);`;
+    const logoSvg = (typeof VIcon === 'function') ? VIcon('logo', 14, '#fff') : '';
+    tb.innerHTML = `<span style="display:flex;align-items:center;gap:8px;">
+        <span style="width:20px;height:20px;border-radius:5px;background:${t.accent};
+          display:inline-flex;align-items:center;justify-content:center;">${logoSvg}</span>
+        <span style="color:${t.textMain};font-weight:600;">${esc(m.window.title)}</span></span>
+      <span style="display:flex;gap:7px;">
+        <span style="width:11px;height:11px;border-radius:50%;background:#e85b5b;opacity:.7;"></span>
+        <span style="width:11px;height:11px;border-radius:50%;background:#e8b93e;opacity:.7;"></span>
+        <span style="width:11px;height:11px;border-radius:50%;background:#5bbf6a;opacity:.7;"></span>
+      </span>`;
+    win.appendChild(tb);
+    // 菜单栏
+    if (m.menubar) {
+      const mb = el('div');
+      mb.style.cssText = `height:30px; display:flex; align-items:center;
+        padding:0 8px; flex-shrink:0; border-bottom:.5px solid ${t.divider}; user-select:none;
+        backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+        background:rgba(255,255,255,.4);`;
+      for (const item of m.menubar) {
+        const mi = el('div');
+        mi.textContent = item.label;
+        mi.style.cssText = `padding:3px 10px; font-size:10px; color:${t.textMain};
+          border-radius:4px; cursor:default;`;
+        mi.onmouseenter = () => mi.style.background = t.accentSoft;
+        mi.onmouseleave = () => mi.style.background = 'transparent';
+        mb.appendChild(mi);
+      }
+      win.appendChild(mb);
+    }
+    // 内容区
+    const body = el('div');
+    body.style.cssText = 'flex:1; position:relative; padding:8px; overflow:hidden;';
+    body.dataset.role = 'body';
+    for (const w of m.widgets) body.appendChild(this.renderWidget(w));
+    win.appendChild(body);
+    this.container.appendChild(win);
+    this._body = body;
+    return win;
+  }
+
+  renderWidget(w) {
+    const t = this.theme;
+    const node = el('div', `ctk-w ctk-${w.type}`);
+    node.dataset.wid = w.id;
+    Object.assign(node.style, {
+      position: 'absolute', left: (w.x ?? 0) + 'px', top: (w.y ?? 0) + 'px',
+      width: w.width ? w.width + 'px' : 'auto',
+      height: w.height ? w.height + 'px' : 'auto',
+      boxSizing: 'border-box',
+    });
+    if (w.hidden) node.style.display = 'none';
+    const fs = (w.fontSize || 10);
+
+    switch (w.type) {
+      case 'card':
+        node.style.cssText += `background:${t.panelBg};border:1px solid ${t.border};border-radius:8px;`;
+        if (w.title) {
+          const h = el('div');
+          h.innerHTML = this._fmt(w.title, 11);
+          h.style.cssText = `position:absolute;top:10px;left:12px;font-size:11px;
+            font-weight:700;color:${t.accent};letter-spacing:.3px;`;
+          node.appendChild(h);
+          this.widgetEls.set(w.id + '__title', h);
+        }
+        break;
+      case 'panel': {
+        const dashed = w.style && w.style.dashed;
+        node.style.cssText += `background:${(w.style && w.style.bg) || t.panelAltBg};
+          border-radius:${(w.style && w.style.radius) || 6}px;
+          border:1px ${dashed ? 'dashed' : 'solid'} ${dashed ? t.accent : t.border};`;
+        break;
+      }
+      case 'label':
+        node.innerHTML = this._fmt(w.text || '', fs);
+        node.style.cssText += `color:${w.color || t.textMain};font-size:${fs}px;
+          font-weight:${w.bold ? '700' : '400'};line-height:${w.lineHeight || 1.4};
+          display:block;white-space:normal;word-break:break-word;`;
+        break;
+      case 'button': {
+        const accent = !!w.accent, dis = !!w.disabled;
+        node.innerHTML = this._fmt(w.text || '', fs);
+        const bg = dis ? t.panelAltBg : (accent ? t.accent : t.panelAltBg);
+        const fg = dis ? t.textMuted : (accent ? t.textInverse : t.textMain);
+        node.style.cssText += `background:${bg};color:${fg};
+          border-radius:6px;display:flex;align-items:center;justify-content:center;gap:4px;
+          font-size:${fs}px;cursor:${dis ? 'default' : 'pointer'};transition:background .2s,box-shadow .2s,transform .15s;
+          border:1px solid ${dis ? t.border : (accent ? t.accent : t.border)};
+          font-weight:${accent ? '600' : '400'};user-select:none;opacity:${dis ? .6 : 1};`;
+        if (w.glow) node.style.boxShadow = `0 0 0 3px ${t.guideGlow}44, 0 0 16px ${t.accent}66`;
+        node.dataset.accent = accent ? '1' : '';
+        node.dataset.disabled = dis ? '1' : '';
+        if (!dis) {
+          node.onmouseenter = () => { if (node.dataset.disabled !== '1') { node.style.background = accent ? t.accentHover : t.accentSoft; node.style.transform = 'translateY(-1px)'; } };
+          node.onmouseleave = () => { if (node.dataset.disabled !== '1') { node.style.background = bg; node.style.transform = 'none'; } };
+        }
+        break;
+      }
+      case 'entry':
+        node.innerHTML = `<span style="color:${t.textMuted};padding:0 10px;font-size:${fs}px;">${esc(w.placeholder || '')}</span>`;
+        node.style.cssText += `background:${t.inputBg};border:1px solid ${t.border};border-radius:6px;display:flex;align-items:center;`;
+        break;
+      case 'displaybox':
+        node.innerHTML = `<span class="db-text" style="color:${t.textSecondary};padding:0 8px;font-size:${fs}px;
+          white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;">${this._fmt(w.text || '', fs)}</span>`;
+        node.style.cssText += `background:${t.inputBg};border:1px solid ${t.border};
+          border-radius:6px;display:flex;align-items:center;overflow:hidden;`;
+        break;
+      case 'listbox': {
+        node.style.cssText += `background:${t.panelBg};border:1px solid ${t.border};
+          border-radius:6px;overflow:hidden auto;padding:4px;`;
+        node._items = [];
+        if (w.items) this.setListItems(w.id, w.items, {}, node);
+        break;
+      }
+      case 'textbox':
+        node.style.cssText += `background:${t.inputBg};border:1px solid ${t.border};
+          border-radius:6px;padding:8px 10px;color:${t.textMain};font-size:11px;
+          font-size:11px;font-family:Consolas,'Courier New',monospace;overflow:hidden auto;
+          white-space:pre-wrap;line-height:1.55;`;
+        node.textContent = w.text || '';
+        break;
+      case 'progress':
+        node.innerHTML = `<div class="pg-fill" style="width:${(w.value || 0) * 100}%;height:100%;
+          border-radius:4px;background:${t.accent};transition:width .1s linear;"></div>`;
+        node.style.cssText += `background:${t.panelAltBg};border-radius:4px;overflow:hidden;`;
+        break;
+      case 'radio': {
+        const on = !!w.selected;
+        node.innerHTML = `<div style="width:16px;height:16px;border-radius:50%;flex-shrink:0;
+          border:2px solid ${on ? t.accent : t.border};display:flex;align-items:center;justify-content:center;">
+          ${on ? `<div style="width:8px;height:8px;border-radius:50%;background:${t.accent};"></div>` : ''}</div>
+          <span style="color:${t.textMain};font-size:${fs}px;margin-left:8px;line-height:1.3;">${this._fmt(w.text || '', fs)}</span>`;
+        node.style.cssText += 'display:flex;align-items:flex-start;cursor:pointer;';
+        break;
+      }
+    }
+    this.widgetEls.set(w.id, node);
+    return node;
+  }
+
+  /* ---------- 动态操作 ---------- */
+  get(id) { return this.widgetEls.get(id); }
+
+  modelRect(id) {
+    let e = this.get(id); if (!e) return null;
+    let x = 0, y = 0, el2 = e;
+    const w = e.offsetWidth, h = e.offsetHeight;
+    while (el2 && el2 !== this.container && !el2.classList.contains('ctk-window')) {
+      x += el2.offsetLeft; y += el2.offsetTop; el2 = el2.offsetParent;
+    }
+    return { x, y, w, h, cx: x + w / 2, cy: y + h / 2 };
+  }
+  center(id) {
+    const e = this.get(id); if (!e) return null;
+    const c = this.container.getBoundingClientRect();
+    const r = e.getBoundingClientRect();
+    return { x: r.left - c.left + r.width / 2, y: r.top - c.top + r.height / 2, w: r.width, h: r.height };
+  }
+
+  show(id, visible = true) { const e = this.get(id); if (e) e.style.display = visible ? '' : 'none'; }
+  setLabel(id, text) { const e = this.get(id); if (e) e.innerHTML = this._fmt(text).replace(/\n/g, '<br>'); }
+  setLabelColor(id, color) { const e = this.get(id); if (e) e.style.color = color; }
+  setDisplayBox(id, text, color) { const e = this.get(id); if (!e) return; const s = e.querySelector('.db-text'); s.innerHTML = this._fmt(text); if (color) s.style.color = color; }
+  setButtonText(id, text) { const e = this.get(id); if (e) e.innerHTML = this._fmt(text); }
+  setButtonEnabled(id, on) {
+    const e = this.get(id); if (!e) return;
+    const t = this.theme, accent = e.dataset.accent === '1';
+    e.dataset.disabled = on ? '' : '1'; e.style.opacity = on ? 1 : .6;
+    e.style.cursor = on ? 'pointer' : 'default';
+    e.style.background = on ? (accent ? t.accent : t.panelAltBg) : t.panelAltBg;
+    e.style.color = on ? (accent ? t.textInverse : t.textMain) : t.textMuted;
+    e.style.borderColor = on ? (accent ? t.accent : t.border) : t.border;
+  }
+  flashButton(id) {
+    const e = this.get(id); if (!e) return;
+    const t = this.theme, accent = e.dataset.accent === '1';
+    const orig = accent ? t.accent : t.panelAltBg;
+    e.style.background = accent ? t.accentPressed : t.accentSoft;
+    e.style.transform = 'translateY(1px) scale(.98)';
+    setTimeout(() => { if (e.dataset.disabled !== '1') { e.style.background = orig; e.style.transform = 'none'; } }, 180);
+  }
+  setEntry(id, text, isPlaceholder = false) {
+    const e = this.get(id); if (!e) return;
+    const t = this.theme;
+    e.innerHTML = `<span style="color:${isPlaceholder ? t.textMuted : t.textMain};padding:0 10px;font-size:10px;">${esc(text)}</span>`;
+  }
+  setRadio(id, on) {
+    const e = this.get(id); if (!e) return;
+    const t = this.theme; const circle = e.firstElementChild;
+    circle.style.borderColor = on ? t.accent : t.border;
+    circle.innerHTML = on ? `<div style="width:8px;height:8px;border-radius:50%;background:${t.accent};"></div>` : '';
+  }
+  setGuideGlow(id, on) {
+    const e = this.get(id); if (!e) return;
+    const t = this.theme;
+    if (on) { e.style.boxShadow = `0 0 0 3px ${t.guideGlow}, 0 0 18px ${t.accent}88`; e.style.transition = 'box-shadow .3s'; }
+    else e.style.boxShadow = 'none';
+  }
+
+  /* 列表项：逐个滑入（APPLE 曲线，杜绝匀速） */
+  setListItems(id, items, opts = {}, nodeArg) {
+    const e = nodeArg || this.get(id); if (!e) return;
+    e.innerHTML = ''; e._items = items;
+    const t = this.theme;
+    items.forEach((it, i) => {
+      const row = el('div');
+      const o = typeof it === 'string' ? { text: it } : it;
+      row.innerHTML = this._fmt(o.text, o.fontSize || 11);
+      row.style.cssText = `padding:5px 8px;font-size:${o.fontSize || 11}px;border-radius:4px;
+        color:${o.fg || t.textMain};background:${o.bg || 'transparent'};
+        font-weight:${o.bold ? '600' : '400'};white-space:nowrap;overflow:hidden;
+        text-overflow:ellipsis;cursor:default;line-height:1.3;display:flex;align-items:center;gap:5px;`;
+      row.dataset.idx = i;
+      e.appendChild(row);
+      if (opts.animate !== false) {
+        row.animate([
+          { opacity: 0, transform: 'translateY(10px)' },
+          { opacity: 1, transform: 'translateY(0)' }
+        ], { duration: 400, delay: i * 50, easing: 'cubic-bezier(.34,1.3,.44,1)', fill: 'backwards' });
+      }
+    });
+  }
+  addListItem(id, item) { const e = this.get(id); if (!e) return; const items = e._items || []; items.push(item); this.setListItems(id, items); }
+  clearList(id) { this.setListItems(id, []); }
+  selectListItem(id, idx) {
+    const e = this.get(id); if (!e) return; const t = this.theme;
+    [...e.children].forEach((row, i) => {
+      const it = (e._items || [])[i]; const o = typeof it === 'string' ? { text: it } : (it || {});
+      if (i === idx) { row.style.background = t.accentSoft; row.style.color = t.accent; row.style.fontWeight = '600'; }
+      else { row.style.background = o.bg || 'transparent'; row.style.color = o.fg || t.textMain; row.style.fontWeight = o.bold ? '600' : '400'; }
+    });
+    e._selected = idx;
+  }
+
+  setProgress(id, v) { const e = this.get(id); if (!e) return; e.querySelector('.pg-fill').style.width = (v * 100) + '%'; }
+  appendLog(id, line, color) {
+    const e = this.get(id); if (!e) return; const t = this.theme;
+    const row = document.createElement('div');
+    row.innerHTML = this._fmt(line, 11);
+    row.style.color = color || t.textMain;
+    e.appendChild(row); e.scrollTop = e.scrollHeight;
+  }
+  clearLog(id) { const e = this.get(id); if (e) e.textContent = ''; }
+
+  /* ---------- 弹窗（含关闭渐出 + 设置可滚动） ---------- */
+  showDialog(key) {
+    const t = this.theme, d = this.model.dialogs[key];
+    if (!d) return null;
+    this.hideDialog();
+    // mask 挂 document.body + fixed，确保 backdrop-filter 生效
+    const mask = el('div');
+    mask.style.cssText = `position:fixed;inset:0;
+      background:rgba(15,18,20,.4);
+      z-index:9500;display:flex;align-items:center;justify-content:center;`;
+    const dlg = el('div');
+    const dlgH = Math.min(d.height, innerHeight - 100);
+    dlg.style.cssText = `width:${d.width}px;height:${dlgH}px;
+      backdrop-filter:blur(24px) saturate(1.6) brightness(1.02);
+      -webkit-backdrop-filter:blur(24px) saturate(1.6) brightness(1.02);
+      background:rgba(245,247,248,.85);
+      border-radius:14px;
+      box-shadow:0 24px 70px rgba(0,0,0,.25), 0 0 0 .5px rgba(255,255,255,.4),
+        inset 0 1px 1px rgba(255,255,255,.5), inset 0 -1px 1px rgba(255,255,255,.15);
+      border:.5px solid rgba(255,255,255,.3);
+      display:flex;flex-direction:column;overflow:hidden;position:relative;
+      transform:scale(.92) translateY(20px);opacity:0;
+      transition:transform .45s cubic-bezier(.34,1.3,.44,1),opacity .35s ease;`;
+    const tb = el('div');
+    tb.style.cssText = `height:38px;background:transparent;display:flex;align-items:center;
+      padding:0 14px;flex-shrink:0;border-bottom:.5px solid ${t.divider};
+      color:${t.textMain};font-size:12px;font-weight:600;justify-content:space-between;`;
+    tb.innerHTML = `<span>${esc(d.title)}</span><span style="color:${t.textMuted};cursor:pointer;">✕</span>`;
+    dlg.appendChild(tb);
+    const body = el('div');
+    body.style.cssText = 'flex:1;position:relative;overflow:hidden;';
+    for (const w of d.widgets) body.appendChild(this.renderWidget({ ...w }));
+    dlg.appendChild(body);
+    mask.appendChild(dlg);
+    document.body.appendChild(mask);
+    this._dialogEl = mask;
+    requestAnimationFrame(() => { dlg.style.transform = 'scale(1) translateY(0)'; dlg.style.opacity = '1'; });
+    return mask;
+  }
+  hideDialog() {
+    if (!this._dialogEl) return;
+    const mask = this._dialogEl;
+    const dlg = mask.querySelector(':scope > div');
+    if (dlg) { dlg.style.transition = 'transform .25s ease-in,opacity .2s ease-in'; dlg.style.transform = 'scale(.92) translateY(10px)'; dlg.style.opacity = '0'; }
+    mask.style.transition = 'opacity .25s'; mask.style.opacity = '0';
+    const m = mask;
+    setTimeout(() => m.remove(), 260);
+    this._dialogEl = null;
+  }
+
+  /* ---------- 右键菜单（挂 body + fixed + 视口坐标 + 边界夹紧 + 渐出） ---------- */
+  showContextMenu(x, y, items) {
+    const t = this.theme;
+    this.hideContextMenu();
+    const menu = el('div');
+    menu.style.cssText = `position:fixed;left:${x}px;top:${y}px;z-index:10002;
+      backdrop-filter:blur(20px) saturate(1.6);
+      -webkit-backdrop-filter:blur(20px) saturate(1.6);
+      background:rgba(255,255,255,.75);
+      border:.5px solid rgba(255,255,255,.4);
+      border-radius:12px;
+      box-shadow:0 12px 40px rgba(0,0,0,.18), 0 0 0 .5px rgba(0,0,0,.06),
+        inset 0 1px 1px rgba(255,255,255,.5);
+      padding:6px;min-width:180px;opacity:0;transform:scale(.92) translateY(-4px);
+      transform-origin:top left;transition:opacity .2s ease,transform .25s cubic-bezier(.34,1.3,.44,1);`;
+    items.forEach(it => {
+      if (it.sep) { const s = el('div'); s.style.cssText = `height:1px;background:${t.divider};margin:4px 6px;`; menu.appendChild(s); return; }
+      const mi = el('div');
+      mi.innerHTML = this._fmt(it.label, 10);
+      mi.style.cssText = `padding:7px 12px;font-size:10px;border-radius:5px;display:flex;align-items:center;gap:6px;
+        color:${it.disabled ? t.textMuted : t.textMain};cursor:${it.disabled ? 'default' : 'pointer'};`;
+      if (!it.disabled) {
+        mi.onmouseenter = () => { mi.style.background = t.accentSoft; mi.style.color = t.accent; };
+        mi.onmouseleave = () => { mi.style.background = 'transparent'; mi.style.color = t.textMain; };
+      }
+      menu.appendChild(mi);
+    });
+    document.body.appendChild(menu);
+    // 边界夹紧
+    const r = menu.getBoundingClientRect();
+    let fx = x, fy = y;
+    if (fx + r.width > innerWidth - 8) fx = innerWidth - r.width - 8;
+    if (fy + r.height > innerHeight - 8) fy = innerHeight - r.height - 8;
+    menu.style.left = fx + 'px'; menu.style.top = fy + 'px';
+    this._ctxMenu = menu;
+    requestAnimationFrame(() => { menu.style.opacity = '1'; menu.style.transform = 'scale(1) translateY(0)'; });
+    return menu;
+  }
+  hideContextMenu() {
+    if (!this._ctxMenu) return;
+    const m = this._ctxMenu;
+    m.style.transition = 'opacity .15s,transform .15s'; m.style.opacity = '0';
+    m.style.transform = 'scale(.92) translateY(-4px)';
+    setTimeout(() => m.remove(), 160);
+    this._ctxMenu = null;
+  }
+}
+
+function el(tag, cls) { const e = document.createElement(tag); if (cls) e.className = cls; return e; }
+function esc(s) { const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; }
+
+</script>
+<script>
+/* ============================================================
+ * anim-engine.js — 动画引擎 v3
+ * · 视口坐标系（fixed 覆盖层，读写同源，零错位）
+ * · 场景中止令牌（SceneAbort）：跳转时旧场景立即终止，不串台
+ * · 苹果式过渡：cubic-bezier(.32,.72,0,1)，一切显隐均有渐变
+ * · 玻璃光环光标 + 拖尾
+ * ============================================================ */
+
+const Ease = {
+  linear: t => t,
+  inOut: t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2,
+  out: t => 1 - Math.pow(1 - t, 3),
+  in: t => t * t * t,
+  outBack: t => 1 + 2.7 * Math.pow(t - 1, 3) + 1.7 * Math.pow(t - 1, 2),
+};
+const APPLE = 'cubic-bezier(.32,.72,0,1)';           // 苹果标准减速曲线
+const APPLE_SPRING = 'cubic-bezier(.34,1.3,.44,1)';  // 轻弹簧
+
+class SceneAbort extends Error { constructor() { super('scene-aborted'); } }
+
+function _esc(s) { const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; }
+
+class AnimEngine {
+  constructor(stage, renderer) {
+    this.stage = stage;
+    this.r = renderer;
+    this.playing = false;
+    this.speed = 1;
+    this.scenes = [];
+    this.sceneIndex = -1;
+    this._activeTweens = new Set();
+    this.onSceneChange = null;
+    this.onEnd = null;
+    this._buildOverlay();
+  }
+
+  /* ---------- 中止令牌：stop 后旧场景在下一个原语处抛错终止 ---------- */
+  _guard() { if (!this.playing) throw new SceneAbort(); }
+
+  /* ---------- 覆盖层 ---------- */
+  _buildOverlay() {
+    this.overlay = document.createElement('div');
+    this.overlay.id = 'vt-overlay';
+    this.overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;pointer-events:none;' +
+      'font-family:"Microsoft YaHei UI","Microsoft YaHei",sans-serif;';
+    document.body.appendChild(this.overlay);
+
+    // 暗角（相机聚焦）
+    this.dim = document.createElement('div');
+    this.dim.style.cssText = `position:fixed;inset:0;opacity:0;transition:opacity .55s ${APPLE};
+      background:radial-gradient(ellipse at center, transparent 42%, rgba(8,10,11,.5) 100%);`;
+    this.overlay.appendChild(this.dim);
+
+    // 聚光灯
+    this.spot = document.createElement('div');
+    this.spot.style.cssText = `position:fixed;opacity:0;border-radius:10px;
+      transition:left .5s ${APPLE}, top .5s ${APPLE}, width .5s ${APPLE},
+        height .5s ${APPLE}, opacity .35s ease;
+      box-shadow:0 0 0 3px rgba(91,168,154,.95), 0 0 24px rgba(91,168,154,.5),
+        0 0 0 9999px rgba(16,20,21,.55);`;
+    this.overlay.appendChild(this.spot);
+
+    // 特效层
+    this.dragLayer = document.createElement('div');
+    this.dragLayer.style.cssText = 'position:fixed;inset:0;';
+    this.overlay.appendChild(this.dragLayer);
+
+    // 玻璃光环（滞后弹性跟随）
+    this.halo = document.createElement('div');
+    this.halo.style.cssText = `position:fixed;left:0;top:0;width:36px;height:36px;border-radius:50%;
+      backdrop-filter:blur(6px) saturate(1.6);
+      -webkit-backdrop-filter:blur(6px) saturate(1.6);
+      background:rgba(127,212,193,.12);border:1px solid rgba(127,212,193,.5);
+      box-shadow:inset 0 1px 1px rgba(255,255,255,.3), 0 0 12px rgba(127,212,193,.3);
+      will-change:transform;opacity:0;transition:opacity .4s,transform .12s cubic-bezier(.32,.72,0,1);`;
+    this.overlay.appendChild(this.halo);
+    this._hx = 0; this._hy = 0;
+
+    // 光标箭头
+    this.cursor = document.createElement('div');
+    this.cursor.innerHTML = `<svg width="27" height="27" viewBox="0 0 24 24"
+      style="filter:drop-shadow(0 3px 7px rgba(0,0,0,.45))">
+      <path d="M4.5 2.5 L4.5 19.5 L9.2 14.8 L12.2 21.4 L14.8 20.2 L11.8 13.7 L18.8 13.7 Z"
+        fill="#fff" stroke="#1c2422" stroke-width="1.25" stroke-linejoin="round"/></svg>`;
+    this.cursor.style.cssText = `position:fixed;left:0;top:0;will-change:transform;opacity:0;
+      transition:opacity .35s;`;
+    this.overlay.appendChild(this.cursor);
+    this.cursor._x = innerWidth * .7; this.cursor._y = innerHeight * .8;
+    this._hx = this.cursor._x; this._hy = this.cursor._y;  // 光环初始 = 光标位置，不滞后
+    this._setCursor(this.cursor._x, this.cursor._y);
+
+    // 字幕
+    this.caption = document.createElement('div');
+    this.caption.id = 'vt-caption';
+    this.caption.style.cssText = `position:fixed;z-index:10001;pointer-events:none;opacity:0;
+      text-align:center;max-width:74vw;will-change:transform,opacity,filter;`;
+    this.caption._on = false;
+    this.overlay.appendChild(this.caption);
+
+    // 拖尾
+    this.trail = document.createElement('div');
+    this.trail.style.cssText = 'position:fixed;inset:0;';
+    this.overlay.appendChild(this.trail);
+  }
+
+  /* ---------- 补间 ---------- */
+  tween(dur, fn, ease = Ease.inOut) {
+    return new Promise(res => {
+      const realDur = dur / this.speed;
+      const finish = () => { try { fn(ease(1)); } catch (_) {} res(); };
+      if (realDur <= 1) { setTimeout(finish, 0); return; }
+      const tw = { t0: performance.now(), dur: realDur, fn, ease, res, dead: false };
+      this._activeTweens.add(tw);
+      const step = now => {
+        if (tw.dead) { this._activeTweens.delete(tw); res(); return; }
+        const p = Math.min(1, (now - tw.t0) / tw.dur);
+        fn(tw.ease(p));
+        if (p < 1) requestAnimationFrame(step);
+        else { this._activeTweens.delete(tw); res(); }
+      };
+      requestAnimationFrame(step);
+    });
+  }
+  wait(ms) { return this.tween(ms, () => {}, Ease.linear); }
+
+  /* ---------- 坐标：视口 ---------- */
+  _targetXY(id) {
+    const e = this.r.get(id); if (!e) return null;
+    const r = e.getBoundingClientRect();
+    if (r.width === 0 && r.height === 0) return null;
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width, h: r.height };
+  }
+
+  /* ---------- 窗口显隐（苹果式过渡） ---------- */
+  async windowIn(winEl) {
+    // 不 guard：由播放按钮直接调用，此时 playing 尚未 true
+    const stageWrap = this.stage.parentElement?.parentElement;
+    if (stageWrap) stageWrap.style.perspective = '1200px';
+    winEl.style.willChange = 'transform, opacity';
+    winEl.style.opacity = '0';
+    winEl.style.transform = 'perspective(1200px) scale(.92) translateY(20px) rotateX(4deg)';
+    await this.tween(550, p => {
+      winEl.style.opacity = p;
+      const rot = 4 * (1 - p);
+      winEl.style.transform = `perspective(1200px) scale(${.92 + .08 * p}) translateY(${20 * (1 - p)}px) rotateX(${rot}deg)`;
+    }, Ease.out);
+    winEl.style.transform = 'none';
+    this.cursor.style.opacity = 1;
+    this.halo.style.opacity = 1;
+  }
+  async dimWindow(ms = 200) {          // 场景过场·下
+    this._guard();
+    const w = this.r.container.firstChild; if (!w) return;
+    w.animate([
+      { opacity: 1, transform: 'none' },
+      { opacity: 0, transform: 'translateY(-10px) scale(.996)' }
+    ], { duration: ms, easing: 'ease-in', fill: 'forwards' });
+    await this.wait(ms);
+  }
+  async showWindow(ms = 300) {         // 场景过场·上
+    this._guard();
+    const w = this.r.container.firstChild; if (!w) return;
+    w.animate([
+      { opacity: 0, transform: 'translateY(-10px) scale(.996)' },
+      { opacity: 1, transform: 'none' }
+    ], { duration: ms, easing: APPLE, fill: 'forwards' });
+    await this.wait(ms);
+  }
+
+  /* ---------- 光标（箭头 + 光环弹性跟随 + 拖尾） ---------- */
+  _setCursor(x, y) {
+    this.cursor._x = x; this.cursor._y = y;
+    this.cursor.style.transform = `translate(${x - 4}px,${y - 3}px)`;
+    // 光环直接设目标位置，CSS transition 自动平滑追赶（同步不脱节）
+    this.halo.style.transform = `translate(${x - 18}px,${y - 18}px)`;
+  }
+  _spawnTrail(x, y) {
+    const d = document.createElement('div');
+    d.style.cssText = `position:fixed;left:${x}px;top:${y}px;width:6px;height:6px;
+      border-radius:50%;background:rgba(127,212,193,.5);transform:translate(-50%,-50%);
+      pointer-events:none;`;
+    this.trail.appendChild(d);
+    d.animate([
+      { opacity: .6, transform: 'translate(-50%,-50%) scale(1)' },
+      { opacity: 0, transform: 'translate(-50%,-50%) scale(.15)' }
+    ], { duration: 500, easing: 'ease-out' }).onfinish = () => d.remove();
+  }
+  async moveTo(id, dur = 640) {
+    this._guard();
+    const t = this._targetXY(id); if (!t) return;
+    return this._moveCursorTo(t.x, t.y, dur);
+  }
+  async moveToXY(x, y, dur = 640) { this._guard(); return this._moveCursorTo(x, y, dur); }
+  async _moveCursorTo(x, y, dur) {
+    const x0 = this.cursor._x, y0 = this.cursor._y;
+    const cx = (x0 + x) / 2 + (y - y0) * .1, cy = Math.min(y0, y) - 42;
+    let lastTrail = 0;
+    await this.tween(dur, p => {
+      const q = 1 - p;
+      const px = q * q * x0 + 2 * q * p * cx + p * p * x;
+      const py = q * q * y0 + 2 * q * p * cy + p * p * y;
+      this._setCursor(px, py);
+      const now = performance.now();
+      if (now - lastTrail > 44) { this._spawnTrail(px + 7, py + 9); lastTrail = now; }
+    }, Ease.inOut);
+  }
+
+  /* ---------- 涟漪 ---------- */
+  _ripple(x, y, size = 90, color = 'rgba(91,168,154,.85)') {
+    const ring = document.createElement('div');
+    ring.style.cssText = `position:fixed;left:${x}px;top:${y}px;border-radius:50%;
+      border:3px solid ${color};transform:translate(-50%,-50%) scale(.15);
+      pointer-events:none;`;
+    this.dragLayer.appendChild(ring);
+    ring.animate([
+      { transform: 'translate(-50%,-50%) scale(.15)', opacity: 1 },
+      { transform: `translate(-50%,-50%) scale(${size / 30})`, opacity: 0 }
+    ], { duration: 560, easing: `cubic-bezier(.22,.8,.36,1)` }).onfinish = () => ring.remove();
+  }
+  _fillFlash(x, y, w, h) {
+    const f = document.createElement('div');
+    f.style.cssText = `position:fixed;left:${x - w / 2}px;top:${y - h / 2}px;width:${w}px;height:${h}px;
+      border-radius:8px;background:rgba(91,168,154,.3);pointer-events:none;`;
+    this.dragLayer.appendChild(f);
+    f.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 500, easing: 'ease-out' })
+      .onfinish = () => f.remove();
+  }
+
+  /* ---------- 点击 ---------- */
+  async click(id, opts = {}) {
+    this._guard();
+    const t = id ? this._targetXY(id) : { x: this.cursor._x, y: this.cursor._y, w: 40, h: 30 };
+    if (t) {
+      const e2 = id ? this.r.get(id) : null;
+      if (e2) {
+        const r = e2.getBoundingClientRect();
+        const inner = document.createElement('div');
+        inner.style.cssText = `position:absolute;left:50%;top:50%;width:12px;height:12px;
+          border-radius:50%;background:rgba(255,255,255,.75);pointer-events:none;z-index:50;`;
+        if (getComputedStyle(e2).position === 'static') e2.style.position = 'relative';
+        e2.appendChild(inner);
+        inner.animate([
+          { transform: 'translate(-50%,-50%) scale(0)', opacity: .9 },
+          { transform: `translate(-50%,-50%) scale(${Math.max(r.width, r.height) / 5})`, opacity: 0 }
+        ], { duration: 500, easing: 'ease-out' }).onfinish = () => inner.remove();
+      }
+      this._ripple(t.x, t.y, Math.max(t.w, t.h) * 1.5);
+      this._fillFlash(t.x, t.y, t.w, t.h);
+    }
+    // 光环弹跳（涟漪扩散感）
+    this.halo.animate([
+      { boxShadow: '0 0 0 1px rgba(127,212,193,.5), 0 0 12px rgba(127,212,193,.3), inset 0 1px 1px rgba(255,255,255,.3)' },
+      { boxShadow: '0 0 0 4px rgba(127,212,193,.8), 0 0 24px rgba(127,212,193,.6), inset 0 1px 1px rgba(255,255,255,.5)' },
+      { boxShadow: '0 0 0 1px rgba(127,212,193,.5), 0 0 12px rgba(127,212,193,.3), inset 0 1px 1px rgba(255,255,255,.3)' },
+    ], { duration: 480, easing: APPLE_SPRING });
+    const cur = this.cursor;
+    cur.animate([
+      { transform: cur.style.transform + ' scale(1)' },
+      { transform: cur.style.transform + ' scale(.82)' },
+      { transform: cur.style.transform + ' scale(1)' },
+    ], { duration: 280, easing: APPLE_SPRING });
+    if (id) this.r.flashButton(id);
+    if (id && opts.selectList !== undefined) this.r.selectListItem(id, opts.selectList);
+    await this.wait(320);
+  }
+
+  /* ---------- 控件脉冲 ---------- */
+  async pulse(id, times = 2) {
+    this._guard();
+    const e2 = this.r.get(id); if (!e2) return;
+    const frames = [];
+    for (let i = 0; i <= times * 2; i++) {
+      const on = i % 2 === 1;
+      frames.push({ boxShadow: on ? '0 0 0 4px rgba(91,168,154,.9), 0 0 26px rgba(91,168,154,.7)' : '0 0 0 0 rgba(0,0,0,0)' });
+    }
+    e2.animate(frames, { duration: times * 480, easing: 'ease-in-out' });
+    await this.wait(times * 480);
+    e2.style.boxShadow = 'none';
+  }
+
+  /* ---------- 打字 ---------- */
+  async typeInto(id, text, cps = 13) {
+    this._guard();
+    for (let i = 1; i <= text.length; i++) {
+      this.r.setEntry(id, text.slice(0, i) + '▏');
+      await this.wait(1000 / cps);
+    }
+    this.r.setEntry(id, text);
+  }
+
+  /* ---------- 聚光灯 ---------- */
+  async spotlight(id, pad = 8) {
+    this._guard();
+    if (id === null) { this.spot.style.opacity = 0; await this.wait(320); return; }
+    const t = this._targetXY(id); if (!t) return;
+    this.spot.style.opacity = 1;
+    this.spot.style.left = (t.x - t.w / 2 - pad) + 'px';
+    this.spot.style.top = (t.y - t.h / 2 - pad) + 'px';
+    this.spot.style.width = (t.w + pad * 2) + 'px';
+    this.spot.style.height = (t.h + pad * 2) + 'px';
+    await this.wait(520);
+    this.spot.animate([
+      { boxShadow: '0 0 0 3px rgba(91,168,154,.95), 0 0 24px rgba(91,168,154,.5), 0 0 0 9999px rgba(16,20,21,.55)' },
+      { boxShadow: '0 0 0 6px rgba(127,212,193,1), 0 0 40px rgba(127,212,193,.7), 0 0 0 9999px rgba(16,20,21,.55)' },
+      { boxShadow: '0 0 0 3px rgba(91,168,154,.95), 0 0 24px rgba(91,168,154,.5), 0 0 0 9999px rgba(16,20,21,.55)' },
+    ], { duration: 720, easing: 'ease-in-out' });
+  }
+
+  /* ---------- 字幕 ---------- */
+  _captionize(html) {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    const frag = document.createDocumentFragment();
+    let delay = 0;
+    const step = 55;
+    const words = [];
+    const walk = (node, cls, inlineColor, inlineSize) => {
+      for (const child of [...node.childNodes]) {
+        if (child.nodeType === 3) {
+          const text = child.textContent;
+          const parts = text.match(/[一-鿿·、，。！？：；""（）✓✅✖⊙⚡—→⟳📂📦📤🔄🗂️✨📋]|[^\s一-鿿·、，。！？：；""（）✓✅✖⊙⚡—→⟳📂📦📤🔄🗂️✨📋]+|\s+/g) || [text];
+          for (const part of parts) {
+            if (!part.trim()) { frag.appendChild(document.createTextNode(' ')); continue; }
+            const s = document.createElement('span');
+            s.className = 'w' + (cls ? ' ' + cls : '');
+            // emoji → SVG 图标（防 ？/� 乱码）
+            if (typeof iconifyText === 'function' && /[✓✅✖⊙⚡⟳📂📦📤🔄🗂️✨📋]/.test(part)) {
+              s.innerHTML = iconifyText(part, cls === 'big' ? 22 : 18);
+            } else {
+              s.textContent = part;
+            }
+            if (inlineColor) s.style.color = inlineColor;
+            if (inlineSize) s.style.fontSize = inlineSize;
+            frag.appendChild(s);
+            words.push({ el: s, delay });
+            delay += step;
+          }
+        } else if (child.tagName === 'BR') {
+          frag.appendChild(document.createElement('br'));
+          delay += step * .6;
+        } else {
+          let c = cls, col = inlineColor, sz = inlineSize;
+          const st = child.style || {};
+          if (st.color) col = st.color;
+          if (st.fontSize) sz = st.fontSize;
+          const tag = child.tagName;
+          if (tag === 'B' || tag === 'STRONG') c = 'accent';
+          else if (tag === 'BIG') c = 'big';
+          else if (tag === 'DIM') c = 'dim';
+          walk(child, c, col, sz);
+        }
+      }
+    };
+    walk(tmp, '', null, null);
+    const underline = document.createElement('span');
+    underline.className = 'cap-underline';
+    frag.appendChild(underline);
+    return { frag, words, total: delay, underline };
+  }
+
+  _placeCaption(pos) {
+    const c = this.caption;
+    c.style.left = '0px'; c.style.top = '0px';
+    c.style.transform = 'none'; c.style.opacity = 0;
+    const cw = c.offsetWidth, ch = c.offsetHeight;
+    const VW = innerWidth, VH = innerHeight;
+    let cx, cy;
+    if (!pos || pos === 'bottom') { cx = VW / 2; cy = VH - 138; }
+    else if (pos === 'center') { cx = VW / 2; cy = VH / 2; }
+    else if (pos === 'top') { cx = VW / 2; cy = 120; }
+    else if (pos.near) {
+      const t = this._targetXY(pos.near);
+      const gap = pos.gap || 34;
+      if (t) {
+        const side = pos.side || 'auto';
+        if (side === 'auto') {
+          const spTop = t.y - t.h / 2, spBot = VH - (t.y + t.h / 2);
+          cy = spBot > spTop ? t.y + t.h / 2 + gap + ch / 2 : t.y - t.h / 2 - gap - ch / 2;
+          cx = t.x;
+        }
+        else if (side === 'top') { cx = t.x; cy = t.y - t.h / 2 - gap - ch / 2; }
+        else if (side === 'bottom') { cx = t.x; cy = t.y + t.h / 2 + gap + ch / 2; }
+        else if (side === 'left') { cx = t.x - t.w / 2 - gap - cw / 2; cy = t.y; }
+        else { cx = t.x + t.w / 2 + gap + cw / 2; cy = t.y; }
+      } else { cx = VW / 2; cy = VH - 138; }
+    } else if (pos.x !== undefined) { cx = pos.x; cy = pos.y; }
+    cx = Math.max(cw / 2 + 24, Math.min(VW - cw / 2 - 24, cx));
+    cy = Math.max(ch / 2 + 20, Math.min(VH - ch / 2 - 20, cy));
+    c.style.left = cx + 'px';
+    c.style.top = cy + 'px';
+    c.style.transform = 'translate(-50%,-50%)';
+  }
+
+  async say(html, holdMs = 3200, pos = 'bottom') {
+    this._guard();
+    // 上一条字幕快速渐隐（杜绝"突然消失"）
+    if (this.caption._on) {
+      const tf = this.caption.style.transform || 'translate(-50%,-50%)';
+      const oldUl = this.caption.querySelector('.cap-underline');
+      if (oldUl) oldUl.animate([{ width: '72px' }, { width: '0' }],
+        { duration: 150, easing: 'ease-in', fill: 'forwards' });
+      this.caption.animate([
+        { opacity: 1, transform: tf + ' translateY(0)', filter: 'blur(0)' },
+        { opacity: 0, transform: tf + ' translateY(-10px)', filter: 'blur(5px)' }
+      ], { duration: 180, easing: 'ease-in', fill: 'forwards' });
+      await this.wait(190);
+      this.caption.querySelectorAll('.w').forEach(w => w.getAnimations().forEach(a => a.cancel()));
+    }
+    if (this._capAnim) { this._capAnim.cancel(); this._capAnim = null; }
+
+    const { frag, words, total } = this._captionize(html);
+    this.caption.innerHTML = '';
+    this.caption.appendChild(frag);
+    this._placeCaption(pos);
+    this.caption._on = true;
+
+    this.caption.animate([
+      { opacity: 0, transform: this.caption.style.transform + ' translateY(16px) scale(.97)', filter: 'blur(5px)' },
+      { opacity: 1, transform: this.caption.style.transform + ' translateY(0) scale(1)', filter: 'blur(0)' }
+    ], { duration: 400, easing: APPLE_SPRING, fill: 'forwards' });
+
+    for (const { el, delay } of words) {
+      const isAccent = el.classList.contains('accent') || el.classList.contains('big');
+      el.animate([
+        { opacity: 0, transform: `translateY(${isAccent ? 20 : 13}px) scale(${isAccent ? 1.35 : .93})`, filter: 'blur(7px)' },
+        { opacity: 1, transform: 'translateY(0) scale(1)', filter: 'blur(0)' }
+      ], { duration: isAccent ? 540 : 440, delay, easing: APPLE_SPRING, fill: 'backwards' });
+    }
+    const ul = this.caption.querySelector('.cap-underline');
+    if (ul) ul.animate([{ width: '0' }, { width: '72px' }],
+      { duration: 620, delay: 180, easing: APPLE, fill: 'forwards' });
+
+    await this.wait(Math.max(holdMs, total + 600));
+  }
+
+  async hideCaption() {
+    this._guard();
+    const c = this.caption;
+    if (!c._on) { await this.wait(60); return; }
+    const tf = c.style.transform || 'translate(-50%,-50%)';
+    // underline 先收缩消失
+    const ul = c.querySelector('.cap-underline');
+    if (ul) ul.animate([{ width: '72px' }, { width: '0' }],
+      { duration: 300, easing: 'ease-in', fill: 'forwards' });
+    // 整体渐隐
+    const anim = c.animate([
+      { opacity: 1, transform: tf + ' translateY(0)', filter: 'blur(0)' },
+      { opacity: 0, transform: tf + ' translateY(-14px)', filter: 'blur(7px)' }
+    ], { duration: 440, easing: 'cubic-bezier(.5,0,.75,0)', fill: 'forwards' });
+    this._capAnim = anim;
+    await this.wait(450);
+    c.querySelectorAll('.w').forEach(w => w.getAnimations().forEach(a => a.cancel()));
+    c.style.opacity = 0;
+    c._on = false;
+  }
+
+  /* ---------- 控件浮现 ---------- */
+  async staggerIn(ids, gap = 80) {
+    this._guard();
+    for (const id of ids) { const e = this.r.get(id); if (e) { e.style.opacity = 0; e.style.transform = 'translateY(12px)'; } }
+    for (const id of ids) {
+      const e = this.r.get(id); if (!e) continue;
+      this.tween(460, p => { e.style.opacity = p; e.style.transform = `translateY(${12 * (1 - p)}px)`; }, Ease.out);
+      await this.wait(gap);
+    }
+    await this.wait(240);
+  }
+
+  /* ---------- 相机（3D 微倾 + 背景视差） ---------- */
+  async camera(id, scale = 1.6, dur = 780) {
+    this._guard();
+    const winEl = this.r.container.firstChild;
+    if (!winEl) return;
+    winEl.style.willChange = 'transform, opacity';
+    winEl.style.transition = 'none';
+    // 给舞台祖父加 perspective（3D 效果，不在有 transform 的元素上设）
+    const stageWrap = this.stage.parentElement?.parentElement;
+    if (stageWrap) stageWrap.style.perspective = '1400px';
+    if (id === null) {
+      const s0 = winEl._s || 1, oxp = winEl._oxp ?? 50, oyp = winEl._oyp ?? 50;
+      const dx0 = winEl._dx || 0, dy0 = winEl._dy || 0;
+      await this.tween(dur, p => {
+        const s = s0 + (1 - s0) * p;
+        winEl.style.transformOrigin = `${oxp + (50 - oxp) * p}% ${oyp + (50 - oyp) * p}%`;
+        const rot = (winEl._rot || 0) * (1 - p);
+        winEl.style.transform = `translate(${dx0 * (1 - p)}px,${dy0 * (1 - p)}px) scale(${s}) rotateX(${rot}deg) rotateY(${rot * .4}deg)`;
+      });
+      winEl._s = 1; winEl._oxp = 50; winEl._oyp = 50; winEl._dx = 0; winEl._dy = 0; winEl._rot = 0;
+      winEl.style.transform = 'none'; winEl.style.transformOrigin = 'center center';
+      this.dim.style.opacity = 0;
+      this._parallax(0, 0);
+      return;
+    }
+    const e2 = this.r.get(id); if (!e2) return;
+    const W = this.r.model.window.width, H = this.r.model.window.height;
+    const m = this.r.modelRect ? this.r.modelRect(id) : null;
+    const px = m ? m.cx : W / 2, py = m ? m.cy : H / 2;
+    const oxp = px / W * 100, oyp = py / H * 100;
+    const off = this._winOffset();
+    const fx = off.x + px, fy = off.y + py;
+    const dx = (this.stage.clientWidth / 2 - fx), dy = (this.stage.clientHeight / 2 - fy);
+    const s0 = winEl._s || 1, oxp0 = winEl._oxp ?? 50, oyp0 = winEl._oyp ?? 50;
+    const dx0 = winEl._dx || 0, dy0 = winEl._dy || 0;
+    const rot0 = winEl._rot || 0;
+    const targetRot = scale > 1.3 ? 3.5 : 0; // 仅大放大时微倾
+    await this.tween(dur, p => {
+      const s = s0 + (scale - s0) * p;
+      winEl.style.transformOrigin = `${oxp0 + (oxp - oxp0) * p}% ${oyp0 + (oyp - oyp0) * p}%`;
+      const rot = rot0 + (targetRot - rot0) * p;
+      winEl.style.transform = `translate(${dx0 + (dx - dx0) * p}px,${dy0 + (dy - dy0) * p}px) scale(${s}) rotateX(${rot}deg) rotateY(${rot * -.4}deg)`;
+      winEl._s = s; winEl._oxp = oxp0 + (oxp - oxp0) * p; winEl._oyp = oyp0 + (oyp - oyp0) * p;
+      winEl._dx = dx0 + (dx - dx0) * p; winEl._dy = dy0 + (dy - dy0) * p; winEl._rot = rot;
+    });
+    this.dim.style.opacity = 1;
+    // 视差：背景反向微移
+    this._parallax(dx * .04, dy * .04);
+  }
+  _parallax(tx, ty) {
+    const bg = document.getElementById('bg');
+    if (bg) { bg.style.transition = 'transform .6s cubic-bezier(.32,.72,0,1)'; bg.style.transform = `translate(${tx}px,${ty}px) scale(${tx||ty?1.03:1})`; }
+  }
+  _winOffset() {
+    let x = 0, y = 0, el2 = this.r.container;
+    while (el2 && el2 !== this.stage) { x += el2.offsetLeft; y += el2.offsetTop; el2 = el2.offsetParent; }
+    return { x, y };
+  }
+
+  /* ---------- 进度条 / 日志 ---------- */
+  async progressTo(id, to, dur = 1800, labelId) {
+    this._guard();
+    const e = this.r.get(id); if (!e) return;
+    const fill = e.querySelector('.pg-fill');
+    const cur = parseFloat(fill.style.width) / 100 || 0;
+    fill.style.backgroundImage = 'linear-gradient(90deg, transparent, rgba(255,255,255,.45), transparent)';
+    fill.style.backgroundSize = '60px 100%';
+    fill.style.backgroundRepeat = 'no-repeat';
+    fill.style.backgroundColor = '#5BA89A';
+    const flow = fill.animate([{ backgroundPosition: '-60px 0' }, { backgroundPosition: '300px 0' }],
+      { duration: 700, iterations: Infinity });
+    await this.tween(dur, p => {
+      const v = cur + (to - cur) * p;
+      this.r.setProgress(id, v);
+      if (labelId) this.r.setLabel(labelId, `进度 ${Math.round(v * 100)}%`);
+    });
+    flow.cancel();
+    fill.style.backgroundImage = 'none';
+    if (labelId) this.r.setLabel(labelId, '');
+  }
+  async logLines(id, lines, gap = 240) {
+    this._guard();
+    for (const ln of lines) {
+      const [text, color] = Array.isArray(ln) ? ln : [ln];
+      this.r.appendLog(id, text, color);
+      const box = this.r.get(id);
+      const last = box && box.lastElementChild;
+      if (last) last.animate([
+        { opacity: 0, transform: 'translateX(-10px)' },
+        { opacity: 1, transform: 'translateX(0)' }
+      ], { duration: 340, easing: APPLE, fill: 'backwards' });
+      await this.wait(gap);
+    }
+  }
+
+  /* ---------- 拖拽文件（SVG 图标 · 旋转飞行 · 落点冲击） ---------- */
+  async dragFileTo(targetId, fileSpec, opts = {}) {
+    this._guard();
+    const t = this._targetXY(targetId); if (!t) return;
+    const sx = opts.fromX !== undefined ? opts.fromX : innerWidth + 90;
+    const sy = opts.fromY !== undefined ? opts.fromY : innerHeight * .32;
+
+    const iconName = fileSpec.icon || 'pack';
+    const iconHtml = (typeof VIcon === 'function')
+      ? VIcon(iconName, opts.size || 46, fileSpec.color || '#7fd4c1') : '';
+    const f = document.createElement('div');
+    f.style.cssText = `position:fixed;left:0;top:0;pointer-events:none;will-change:transform;
+      display:flex;flex-direction:column;align-items:center;gap:5px;
+      filter:drop-shadow(0 10px 22px rgba(0,0,0,.4));`;
+    f.innerHTML = `<div style="width:52px;height:52px;display:flex;align-items:center;
+        justify-content:center;border-radius:14px;background:rgba(28,34,36,.55);
+        backdrop-filter:blur(6px);border:1px solid rgba(127,212,193,.3);">${iconHtml}</div>
+      <div style="background:rgba(24,28,30,.94);color:#fff;font-size:12px;padding:4px 12px;
+        border-radius:8px;white-space:nowrap;max-width:250px;overflow:hidden;
+        text-overflow:ellipsis;">${_esc(fileSpec.name || '')}</div>`;
+    this.dragLayer.appendChild(f);
+
+    this.cursor.style.opacity = 1;
+    this.halo.style.opacity = 1;
+    this._setCursor(sx, sy);
+    const setPos = (x, y, rot, sc = 1) => {
+      f.style.transform = `translate(${x - 26}px,${y - 34}px) rotate(${rot}deg) scale(${sc})`;
+      this._setCursor(x + 16, y + 20);
+    };
+    setPos(sx, sy, 0);
+    await this.wait(220);
+
+    const ex = t.x, ey = t.y;
+    const cx = (sx + ex) / 2, cy = Math.min(sy, ey) - 110;
+    let lastTrail = 0;
+    await this.tween(opts.flyDur || 980, p => {
+      const q = 1 - p;
+      const x = q * q * sx + 2 * q * p * cx + p * p * ex;
+      const y = q * q * sy + 2 * q * p * cy + p * p * ey;
+      const rot = Math.sin(p * Math.PI * 2.2) * 8;
+      setPos(x, y, rot);
+      const now = performance.now();
+      if (now - lastTrail > 52) { this._spawnTrail(x, y + 8); lastTrail = now; }
+      if (p > .68 && opts.highlightTarget !== false) {
+        const el2 = this.r.get(targetId);
+        if (el2) el2.style.boxShadow = '0 0 0 3px #5BA89A, 0 0 26px rgba(91,168,154,.8)';
+      }
+    }, Ease.inOut);
+
+    await this.tween(280, p => {
+      f.style.opacity = 1 - p;
+      setPos(ex, ey, 0, 1 - p * .5);
+    }, Ease.in);
+    f.remove();
+    this._ripple(ex, ey, Math.max(t.w, t.h) * 1.6);
+    const el2 = this.r.get(targetId);
+    if (el2) {
+      el2.animate([
+        { transform: 'scale(1)' }, { transform: 'scale(1.025)' }, { transform: 'scale(1)' }
+      ], { duration: 340, easing: APPLE_SPRING });
+      setTimeout(() => { el2.style.boxShadow = 'none'; }, 400);
+    }
+    await this.wait(220);
+  }
+
+  /* ---------- 对话框（弹出/关闭均带过渡） ---------- */
+  async openDialog(key, holdMs = 0) {
+    this._guard();
+    const d = this.r.showDialog(key);
+    await this.wait(460);
+    if (holdMs) await this.wait(holdMs);
+    return d;
+  }
+  async closeDialog() {
+    this._guard();
+    await this.r.hideDialog();
+    await this.wait(280);
+  }
+
+  /* ---------- 右键菜单 ---------- */
+  async rightClick(id, items, holdMs = 1600) {
+    this._guard();
+    const t = this._targetXY(id); if (!t) return;
+    this._ripple(t.x, t.y, 50, 'rgba(181,142,201,.85)');
+    await this.wait(240);
+    this.r.showContextMenu(t.x + 8, t.y + 6, items);
+    await this.wait(holdMs);
+  }
+  async closeContextMenu() {
+    this._guard();
+    await this.r.hideContextMenu();
+    await this.wait(220);
+  }
+
+  /* ---------- 高亮列表行 ---------- */
+  async highlightListRow(listId, rowIdx) {
+    this._guard();
+    const e = this.r.get(listId); if (!e) return null;
+    const row = e.children[rowIdx]; if (!row) return null;
+    const r = row.getBoundingClientRect();
+    this.spot.style.opacity = 1;
+    this.spot.style.left = (r.left - 5) + 'px';
+    this.spot.style.top = (r.top - 3) + 'px';
+    this.spot.style.width = (r.width + 10) + 'px';
+    this.spot.style.height = (r.height + 6) + 'px';
+    row.animate([
+      { transform: 'translateX(0)' }, { transform: 'translateX(6px)' }, { transform: 'translateX(0)' }
+    ], { duration: 400, easing: APPLE_SPRING });
+    await this.wait(520);
+    return row;
+  }
+
+  /* ---------- 文件资源管理器浮层（SVG 图标） ---------- */
+  async showExplorer(spec) {
+    this._guard();
+    const W = 470, H = 310;
+    const win = document.createElement('div');
+    win.style.cssText = `position:fixed;z-index:10000;width:${W}px;height:${H}px;
+      right:6vw;top:12vh;background:#fff;border-radius:12px;
+      box-shadow:0 24px 70px rgba(0,0,0,.45),0 0 0 1px rgba(0,0,0,.1);
+      display:flex;flex-direction:column;overflow:hidden;pointer-events:none;`;
+    const titleIcon = (typeof VIcon === 'function') ? VIcon('folder', 16, '#c99a3e') : '';
+    win.innerHTML = `
+      <div style="height:38px;background:#f3f4f5;display:flex;align-items:center;padding:0 14px;
+        font-size:13px;color:#333;font-weight:600;border-bottom:1px solid #e2e5e7;flex-shrink:0;gap:8px;">
+        <span style="display:flex;">${titleIcon}</span>${_esc(spec.title || '文件夹')}
+      </div>
+      <div style="flex:1;padding:16px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px;
+        align-content:start;overflow:hidden;" data-role="grid"></div>`;
+    const grid = win.querySelector('[data-role="grid"]');
+    (spec.items || []).forEach(it => {
+      const cell = document.createElement('div');
+      cell.style.cssText = `display:flex;flex-direction:column;align-items:center;gap:5px;
+        padding:8px 4px;border-radius:8px;${it.highlight ? 'background:#D6E8E4;' : ''}`;
+      const ic = (typeof VIcon === 'function')
+        ? VIcon(it.icon || 'pack', 36, it.iconColor || '#5d8a9e') : '';
+      cell.innerHTML = `<div style="width:40px;height:40px;display:flex;align-items:center;
+        justify-content:center;">${ic}</div>
+        <div style="font-size:10px;color:#333;text-align:center;word-break:break-all;
+          line-height:1.2;max-width:94px;">${_esc(it.name)}</div>`;
+      grid.appendChild(cell);
+    });
+    this.dragLayer.appendChild(win);
+    win.animate([
+      { opacity: 0, transform: 'translateY(22px) scale(.95)' },
+      { opacity: 1, transform: 'translateY(0) scale(1)' }
+    ], { duration: 480, easing: APPLE_SPRING, fill: 'forwards' });
+    await this.wait(440);
+    this._explorer = win;
+    return win;
+  }
+  async hideExplorer() {
+    this._guard();
+    if (this._explorer) {
+      const w = this._explorer;
+      w.animate([
+        { opacity: 1, transform: 'translateY(0) scale(1)' },
+        { opacity: 0, transform: 'translateY(14px) scale(.96)', filter: 'blur(3px)' }
+      ], { duration: 360, easing: 'ease-in', fill: 'forwards' });
+      await this.wait(370);
+      w.remove(); this._explorer = null;
+    }
+  }
+
+  /* ---------- 分镜播放（含过场 + 中止） ---------- */
+  setScenes(scenes) { this.scenes = scenes; }
+  async playFrom(i) {
+    this.stop();
+    this.playing = true;
+    for (let k = i; k < this.scenes.length; k++) {
+      if (!this.playing) break;
+      this.sceneIndex = k;
+      const sc = this.scenes[k];
+      if (this.onSceneChange) this.onSceneChange(k, sc);
+      try {
+        await sc.run(this);
+        // 场景间微停顿（呼吸感）
+        if (this.playing && k < this.scenes.length - 1) await this.wait(450);
+      } catch (err) {
+        if (!(err instanceof SceneAbort)) console.error('scene error', sc.title, err);
+      }
+    }
+    this.playing = false;
+    if (this.sceneIndex >= this.scenes.length - 1 && this.onEnd) this.onEnd();
+  }
+  stop() {
+    this.playing = false;
+    for (const tw of this._activeTweens) tw.dead = true;
+    this._activeTweens.clear();
+    if (this.overlay) {
+      this.overlay.querySelectorAll('*').forEach(n => n.getAnimations && n.getAnimations().forEach(a => a.cancel()));
+      this.spot.style.opacity = 0;
+      this.dim.style.opacity = 0;
+      this.caption._on = false;
+      this.caption.style.opacity = 0;
+    }
+  }
+}
+
+</script>
+<script>
+// app-model.js — Pulses Swap 真实 UI 结构模型
+// 依据源码 deepseek_python_20261006_021326.py 精确还原
+// 主题: Pulses 水墨淡色 (light)
+
+// 从源码常量提取的精确配色
+const THEME = {
+  windowBg:     '#F5F7F8',  // C_WINDOW_BG
+  panelBg:      '#FFFFFF',  // C_PANEL_BG
+  panelAltBg:   '#EDF2F4',  // C_PANEL_ALT_BG
+  inputBg:      '#F7FAFB',  // C_INPUT_BG
+  accent:       '#5BA89A',  // C_ACCENT (水墨青)
+  accentHover:  '#4A9285',
+  accentPressed:'#3D7A6E',
+  accentSoft:   '#D6E8E4',
+  textMain:     '#2C3E3F',
+  textSecondary:'#6B7B7D',
+  textMuted:    '#9AABAD',
+  textInverse:  '#FFFFFF',
+  border:       '#D1DCDE',
+  divider:      '#E0E8EA',
+  focus:        '#5BA89A',
+  success:      '#5BA89A',
+  warning:      '#C9A961',
+  error:        '#C97B7B',
+  info:         '#7B9DC9',
+  statusNormal:    '#5BA89A', statusNormalBg:   '#E7F1EE',
+  statusAdded:     '#7B9DC9', statusAddedBg:    '#E8EFF7',
+  statusRemoved:   '#C97B7B',
+  statusModified:  '#B58EC9', statusModifiedBg: '#F2EAF7',
+  statusExtra:     '#C9A961', statusExtraBg:    '#F7F2E5',
+  statusMissing:   '#C97B7B', statusMissingBg:  '#F7E8E8',
+  statusEmpty:     '#9AABAD',
+  guideGlow:    '#3D7A6E',
+};
+
+const APP_MODEL = {
+  meta: {
+    title: 'Pulses Swap 使用教程',
+    subtitle: 'Tacz 枪包一键切换工具 · v2.1',
+  },
+  window: { title: 'Pulses Swap v2.1', width: 1150, height: 760 },
+  theme: THEME,
+
+  // ============ 菜单栏 ============
+  menubar: [
+    { label: '文件' }, { label: '设置' }, { label: '功能' }, { label: '更多' },
+  ],
+
+  // 布局：左侧固定 340px 宽，右侧弹性。整体 padding 8。
+  // 左列 = x:8 宽340。右列 = x:354 宽 788。
+  widgets: [
+
+    // ================= 左栏 =================
+
+    // ---- Step 1 整合包卡片 ----
+    { id: 'pack_card', type: 'card', x: 8, y: 8, width: 340, height: 218,
+      title: 'Step 1 · 整合包' },
+    // 大拖入框
+    { id: 'pack_drop', type: 'panel', x: 20, y: 46, width: 316, height: 128,
+      style: { bg: THEME.panelAltBg, radius: 6 } },
+    { id: 'pack_drop_text', type: 'label', x: 30, y: 56, width: 296,
+      text: 'Step 1 · 拖入整合包根目录\n或整合包内任意文件（自动定位 tacz）',
+      fontSize: 10, color: THEME.textSecondary, lineHeight: 1.5 },
+    // 路径显示框
+    { id: 'pack_path_box', type: 'displaybox', x: 30, y: 108, width: 296, height: 28,
+      text: '未选择' },
+    // 按钮行
+    { id: 'btn_select_pack', type: 'button', x: 30, y: 142, width: 60, height: 28,
+      text: '选择', accent: true },
+    { id: 'btn_open_pack', type: 'button', x: 94, y: 142, width: 32, height: 28,
+      text: '📂', disabled: true },
+    { id: 'btn_recent', type: 'button', x: 130, y: 142, width: 70, height: 28,
+      text: '▼ 最近' },
+    // 状态行
+    { id: 'pack_status', type: 'label', x: 20, y: 180, text: '状态: 未加载',
+      fontSize: 10, color: THEME.error, bold: false },
+    { id: 'pack_current', type: 'label', x: 20, y: 198, text: '当前预设: 无',
+      fontSize: 10, color: THEME.accent },
+
+    // ---- Step 2 预设管理卡片 ----
+    { id: 'preset_card', type: 'card', x: 8, y: 234, width: 340, height: 296,
+      title: 'Step 2 · 预设管理' },
+    // 预设列表
+    { id: 'preset_list', type: 'listbox', x: 20, y: 270, width: 316, height: 150,
+      items: [] },
+    // 虚线拖入框
+    { id: 'import_drop', type: 'panel', x: 20, y: 426, width: 316, height: 56,
+      style: { bg: THEME.panelAltBg, radius: 6, dashed: true } },
+    { id: 'import_drop_text', type: 'label', x: 28, y: 434, width: 300,
+      text: 'Step 2 · 导入预设包 / 更新包\n拖入 .fgcpack / .fgcupdate，或点击此处选择',
+      fontSize: 9, color: THEME.textSecondary, lineHeight: 1.4 },
+    // 按钮行
+    { id: 'btn_create', type: 'button', x: 20, y: 490, width: 72, height: 28,
+      text: '+ 创建', disabled: true },
+    { id: 'btn_export', type: 'button', x: 96, y: 490, width: 76, height: 28,
+      text: '📤 导出', disabled: true },
+    { id: 'btn_update', type: 'button', x: 176, y: 490, width: 76, height: 28,
+      text: '🔄 更新', disabled: true },
+    { id: 'btn_refresh_preset', type: 'button', x: 256, y: 490, width: 40, height: 28,
+      text: '⟳', disabled: true },
+    { id: 'loading_label', type: 'label', x: 300, y: 496, text: '',
+      fontSize: 9, color: THEME.accent },
+
+    // ---- Step 3 预设详情卡片 ----
+    { id: 'info_card', type: 'card', x: 8, y: 538, width: 340, height: 214,
+      title: 'Step 3 · 预设详情' },
+    { id: 'info_name', type: 'label', x: 20, y: 574, text: '预设: 未选择',
+      fontSize: 14, color: THEME.accent, bold: true },
+    { id: 'info_version', type: 'label', x: 20, y: 596, text: '版本号: 无',
+      fontSize: 10, color: THEME.textSecondary },
+    { id: 'info_status', type: 'label', x: 20, y: 618, text: '状态: 未应用',
+      fontSize: 10, color: THEME.textSecondary },
+    { id: 'version_label', type: 'label', x: 20, y: 650, text: 'Step 3 · 版本号:',
+      fontSize: 10, color: THEME.textMain },
+    { id: 'version_entry', type: 'entry', x: 104, y: 644, width: 160, height: 28,
+      placeholder: '' },
+    { id: 'btn_save_version', type: 'button', x: 270, y: 644, width: 60, height: 28,
+      text: '保存', disabled: true },
+
+    // ================= 右栏 =================
+
+    // ---- 枪包列表卡片 ----
+    { id: 'gunpack_card', type: 'card', x: 354, y: 8, width: 788, height: 420,
+      title: '枪包列表' },
+    { id: 'gunpack_count', type: 'label', x: 366, y: 44, text: '共 0 个枪包',
+      fontSize: 10, color: THEME.textMain },
+    { id: 'btn_open_tacz', type: 'button', x: 922, y: 38, width: 100, height: 28,
+      text: '📂 打开TACZ', disabled: true },
+    { id: 'btn_refresh_gun', type: 'button', x: 1028, y: 38, width: 76, height: 28,
+      text: '⟳ 刷新', disabled: true },
+    { id: 'gunpack_list', type: 'listbox', x: 366, y: 74, width: 764, height: 340,
+      items: [] },
+
+    // ---- 进度条（默认隐藏）----
+    { id: 'progress', type: 'progress', x: 354, y: 434, width: 788, height: 8,
+      value: 0, hidden: true },
+    { id: 'progress_label', type: 'label', x: 354, y: 446, text: '',
+      fontSize: 9, color: THEME.textSecondary, hidden: true },
+
+    // ---- 一键替换按钮 ----
+    { id: 'btn_apply', type: 'button', x: 354, y: 468, width: 788, height: 34,
+      text: 'Step 4 · ⚡ 一键替换', accent: true, disabled: true, fontSize: 14 },
+
+    // ---- 日志卡片 ----
+    { id: 'log_card', type: 'card', x: 354, y: 512, width: 788, height: 240,
+      title: '日志' },
+    { id: 'btn_log_full', type: 'button', x: 366, y: 546, width: 110, height: 26,
+      text: '📋 显示完整日志', fontSize: 9 },
+    { id: 'btn_log_clear', type: 'button', x: 482, y: 546, width: 50, height: 26,
+      text: '清空', fontSize: 9 },
+    { id: 'log_box', type: 'textbox', x: 366, y: 580, width: 764, height: 160,
+      text: '' },
+  ],
+
+  // ============ 弹窗模板（初始化窗口） ============
+  dialogs: {
+    init: {
+      title: '初始化 Pulses Swap', width: 720, height: 560,
+      widgets: [
+        { id: 'dlg_title', type: 'label', x: 24, y: 20, text: '欢迎使用 Pulses Swap',
+          fontSize: 18, color: THEME.accent, bold: true },
+        { id: 'dlg_step', type: 'label', x: 24, y: 50, text: 'Step 1 · 选择数据库位置',
+          fontSize: 14, color: THEME.guideGlow, bold: true },
+        { id: 'dlg_desc', type: 'label', x: 24, y: 82, width: 672,
+          text: '首次启动需要指定数据库位置。\n数据库用于保存预设、校验数据和程序设置。\n\n• 新用户 → 点「✨ 新建数据库」或「使用默认位置」\n• 已有数据库 → 点「📂 定位已有数据库」',
+          fontSize: 13, color: THEME.textSecondary, lineHeight: 1.6 },
+        // 数据库位置卡片
+        { id: 'dlg_loc_card', type: 'panel', x: 24, y: 280, width: 672, height: 68,
+          style: { bg: THEME.panelBg, radius: 8 } },
+        { id: 'dlg_loc_label', type: 'label', x: 40, y: 292,
+          text: '默认数据库位置（与程序同目录）:',
+          fontSize: 12, color: THEME.textSecondary },
+        { id: 'dlg_loc_path', type: 'label', x: 40, y: 316,
+          text: '…/PulsesSwap_database',
+          fontSize: 12, color: THEME.textMain },
+        // 按钮行（紧贴卡片下方，加大尺寸）
+        { id: 'dlg_btn_exist', type: 'button', x: 24, y: 368, width: 160, height: 36,
+          text: '📂 定位已有数据库', fontSize: 12 },
+        { id: 'dlg_btn_legacy', type: 'button', x: 192, y: 368, width: 160, height: 36,
+          text: '📦 适配旧版数据库', fontSize: 12 },
+        { id: 'dlg_btn_new', type: 'button', x: 360, y: 368, width: 150, height: 36,
+          text: '✨ 新建数据库', accent: true, fontSize: 13, glow: true },
+        { id: 'dlg_btn_default', type: 'button', x: 520, y: 368, width: 150, height: 36,
+          text: '使用默认位置', fontSize: 12 },
+      ]
+    },
+    // 设置窗口（紧凑布局，内容可滚动，不越界）
+    settings: {
+      title: '设置', width: 540, height: 620,
+      widgets: [
+        { id: 'set_db_title', type: 'label', x: 15, y: 12, text: '数据库位置',
+          fontSize: 14, color: THEME.accent, bold: true },
+        { id: 'set_db_card', type: 'panel', x: 15, y: 34, width: 510, height: 44,
+          style: { bg: THEME.panelBg, radius: 8 } },
+        { id: 'set_db_path', type: 'label', x: 27, y: 46,
+          text: '…/PulsesSwap_database', fontSize: 10, color: THEME.textMain },
+        { id: 'set_mode_title', type: 'label', x: 15, y: 92, text: '数据库存储模式',
+          fontSize: 14, color: THEME.accent, bold: true },
+        { id: 'set_mode_card', type: 'panel', x: 15, y: 114, width: 510, height: 118,
+          style: { bg: THEME.panelBg, radius: 8 } },
+        { id: 'set_radio_iso', type: 'radio', x: 27, y: 126, selected: true,
+          text: '隔离存储（推荐，每个整合包独立预设）', fontSize: 10 },
+        { id: 'set_radio_iso_desc', type: 'label', x: 48, y: 148,
+          text: '数据库保存在各整合包目录下，避免文件重名',
+          fontSize: 9, color: THEME.textMuted },
+        { id: 'set_radio_mer', type: 'radio', x: 27, y: 172,
+          text: '合并存储（所有整合包共用预设）', fontSize: 10 },
+        { id: 'set_radio_mer_desc', type: 'label', x: 48, y: 194, width: 460,
+          text: '数据库保存在指定位置，所有整合包共享预设列表。同名枪包可能互相覆盖',
+          fontSize: 9, color: THEME.textMuted },
+        { id: 'set_role_title', type: 'label', x: 15, y: 250, text: '用户身份',
+          fontSize: 14, color: THEME.accent, bold: true },
+        { id: 'set_role_card', type: 'panel', x: 15, y: 272, width: 510, height: 80,
+          style: { bg: THEME.panelBg, radius: 8 } },
+        { id: 'set_radio_player', type: 'radio', x: 27, y: 284, selected: true,
+          text: '玩家（默认）', fontSize: 10 },
+        { id: 'set_radio_player_desc', type: 'label', x: 48, y: 306,
+          text: '检测到变更时提示检查枪包', fontSize: 9, color: THEME.textMuted },
+        { id: 'set_radio_dev', type: 'radio', x: 270, y: 284,
+          text: '开发者', fontSize: 10 },
+        { id: 'set_radio_dev_desc', type: 'label', x: 291, y: 306,
+          text: '检测到变更时提示导出更新', fontSize: 9, color: THEME.textMuted },
+        { id: 'set_dbm_title', type: 'label', x: 15, y: 370, text: '数据库管理',
+          fontSize: 14, color: THEME.accent, bold: true },
+        { id: 'set_dbm_card', type: 'panel', x: 15, y: 392, width: 510, height: 108,
+          style: { bg: THEME.panelBg, radius: 8 } },
+        { id: 'set_btn_switch', type: 'button', x: 27, y: 404, width: 100, height: 28,
+          text: '切换数据库', fontSize: 9 },
+        { id: 'set_btn_merge', type: 'button', x: 135, y: 404, width: 100, height: 28,
+          text: '合并数据库', fontSize: 9 },
+        { id: 'set_btn_legacy', type: 'button', x: 243, y: 404, width: 116, height: 28,
+          text: '适配旧版数据库', fontSize: 9 },
+        { id: 'set_btn_open', type: 'button', x: 27, y: 440, width: 130, height: 28,
+          text: '打开数据库文件夹', fontSize: 9 },
+        { id: 'set_btn_save', type: 'button', x: 400, y: 520, width: 90, height: 28,
+          text: '保存', accent: true },
+        { id: 'set_btn_cancel', type: 'button', x: 302, y: 520, width: 90, height: 28,
+          text: '取消' },
+      ]
+    }
+  }
+};
+
+</script>
+<script>
+/* ============================================================
+ * scenes.js — Pulses Swap 教程分镜脚本 v2
+ * 逻辑修复：导入即预览校验、切换预览、增量蓝条、修复变绿
+ * 全部文本走 iconifyText（零 emoji，由 renderer 处理）
+ * ============================================================ */
+
+const T = () => APP_MODEL.theme;
+const LC = {
+  ok:   () => T().success,
+  info: () => T().info,
+  warn: () => T().warning,
+  err:  () => T().error,
+  dim:  () => T().textSecondary,
+};
+
+// 预设枪包数据（各预设不同的枪包集合）
+const PRESET_DATA = {
+  default:     ['modern_warfare.zip','tacz_core_pack','rifle_v2.zip'],
+  'PVP 专用':  ['awp_dragon.zip','ak47_redline.zip','m4a1_storm.zip'],
+  '生存养老':  ['shotgun_wood.zip','pistol_iron.zip','medic_kit.zip'],
+};
+
+// 工具：生成绿色枪包条目（某预设的全部枪包，正常状态）
+function greenGunpackItems(names) {
+  const t = T();
+  return names.map(n => ({ text: `check ${n}`, fg: t.statusNormal, bg: t.statusNormalBg }));
+}
+// 四色条目（演示用）
+function mixedGunpackItems() {
+  const t = T();
+  return [
+    { text: '✓ awp_dragon.zip',     fg: t.statusNormal,   bg: t.statusNormalBg },
+    { text: '✓ ak47_redline.zip',   fg: t.statusNormal,   bg: t.statusNormalBg },
+    { text: '✖ deagle_blaze.zip',   fg: t.statusMissing,  bg: t.statusMissingBg },
+    { text: '⊙ old_pistol',           fg: t.statusExtra,    bg: t.statusExtraBg },
+    { text: '⚡ m4a1_storm.zip',      fg: t.statusModified, bg: t.statusModifiedBg },
+    { text: '✓ sniper_ghost.zip',   fg: t.statusNormal,   bg: t.statusNormalBg },
+  ];
+}
+
+async function resetMainUI(e) {
+  const r = e.r, t = T();
+  // 仅在手动跳转时做窗口过场（jumpTo 里单独处理），自动播放不做 dim/show
+  if (!e.playing) { await e.dimWindow(180); }
+  r.hideDialog(); r.hideContextMenu();
+  r.setDisplayBox('pack_path_box', '未选择');
+  r.setLabel('pack_status', '状态: 未加载'); r.setLabelColor('pack_status', t.error);
+  r.setLabel('pack_current', '当前预设: 无'); r.setLabelColor('pack_current', t.accent);
+  r.setButtonEnabled('btn_open_pack', false);
+  r.clearList('preset_list');  // 不动画
+  ['btn_create','btn_export','btn_update','btn_refresh_preset'].forEach(id => r.setButtonEnabled(id, false));
+  r.setLabel('info_name', '预设: 未选择');
+  r.setLabel('info_version', '版本号: 无');
+  r.setLabel('info_status', '状态: 未应用'); r.setLabelColor('info_status', t.textSecondary);
+  r.setEntry('version_entry', '');
+  r.setButtonEnabled('btn_save_version', false);
+  r.clearList('gunpack_list');
+  r.setLabel('gunpack_count', '共 0 个枪包');
+  r.setButtonEnabled('btn_open_tacz', false);
+  r.setButtonEnabled('btn_refresh_gun', false);
+  r.setProgress('progress', 0);
+  r.show('progress', false); r.show('progress_label', false);
+  r.setButtonEnabled('btn_apply', false);
+  r.setButtonText('btn_apply', 'Step 4 · ⚡ 一键替换');
+  r.clearLog('log_box');
+  ['pack_drop','btn_create','btn_apply'].forEach(id => r.setGuideGlow(id, false));
+  // 场景过场：窗口淡入
+  if (!e.playing) { await e.showWindow(250); }
+}
+
+async function simulatePackLoaded(e, packName = 'MyModpack') {
+  const r = e.r, t = T();
+  r.setDisplayBox('pack_path_box', `D:/Minecraft/${packName}`, t.success);
+  r.setLabel('pack_status', '状态: 已加载 check'); r.setLabelColor('pack_status', t.success);
+  r.setButtonEnabled('btn_open_pack', true);
+  r.setButtonEnabled('btn_open_tacz', true);
+  r.setButtonEnabled('btn_refresh_gun', true);
+  r.setButtonEnabled('btn_create', true);
+  r.setButtonEnabled('btn_refresh_preset', true);
+  await e.logLines('log_box', [
+    [`[INFO] 从拖入路径定位到整合包: D:/Minecraft/${packName}`, LC.info()],
+    ['[SUCCESS] 整合包加载成功', LC.ok()],
+  ], 200);
+}
+
+// 选中预设 → 更新详情 + 枪包列表立即显示该预设内容 + 校验日志
+async function selectPresetAndPreview(e, idx, name, version, source) {
+  const r = e.r, t = T();
+  const packs = PRESET_DATA[name] || PRESET_DATA['default'];
+  r.selectListItem('preset_list', idx);
+  r.setLabel('info_name', `预设: ${name}`);
+  r.setLabel('info_version', `版本号: ${version}`);
+  r.setLabel('info_status', '状态: 未应用'); r.setLabelColor('info_status', t.textSecondary);
+  r.setEntry('version_entry', version);
+  r.setButtonEnabled('btn_save_version', true);
+  r.setButtonEnabled('btn_export', name !== 'default');
+  // 枪包列表立即显示该预设内容（来自预设文件夹 / Tacz）
+  r.setListItems('gunpack_list', greenGunpackItems(packs), { animate: true });
+  r.setLabel('gunpack_count', `共 ${packs.length} 个枪包 (来自 ${source || '预设文件夹'})`);
+  // 校验日志（在此时排查，而非替换后）
+  await e.logLines('log_box', [
+    [`[INFO] 正在读取预设「${name}」的枪包…`, LC.info()],
+    [`[SUCCESS] 校验通过 · 共 ${packs.length} 个枪包`, LC.ok()],
+  ], 200);
+}
+
+/* ============================================================
+ * 玩家篇
+ * ============================================================ */
+const PLAYER_SCENES = [
+
+  { title: '开场 · 认识 Pulses Swap', part: 'player', run: async e => {
+    await resetMainUI(e);
+    await e.say('<big>Pulses Swap</big><br><dim>Tacz 枪包一键切换工具</dim>', 2000);
+    await e.say('玩家只需要会一个字 —— <b>拖</b>', 1800);
+    await e.hideCaption();
+  }},
+
+  { title: '首次启动 · 初始化数据库', part: 'player', run: async e => {
+    // 不 resetMainUI——保留主界面控件框架
+    e.r.clearLog('log_box');
+    e.r.setLabel('pack_status', '状态: 等待初始化'); e.r.setLabelColor('pack_status', T().warning);
+    await e.say('第一次打开程序，主界面已就绪', 1400);
+    await e.hideCaption();
+    // 先提示"会弹出一个初始化窗口"，再弹出
+    await e.say('此时会弹出一个<b>初始化窗口</b>', 1600);
+    await e.openDialog('init');
+    await e.spotlight('dlg_btn_new', 8);
+    await e.say('推荐点击 <b>新建数据库</b><br><dim>数据库用来保存你的预设和设置</dim>');
+    await e.moveTo('dlg_btn_new');
+    await e.click('dlg_btn_new');
+    await e.spotlight(null);
+    await e.closeDialog();
+    // 弹窗关闭后，主界面立刻恢复到"等待操作"状态（不等下一段）
+    const t = T();
+    e.r.setButtonEnabled('btn_open_pack', true);
+    e.r.setButtonEnabled('btn_open_tacz', true);
+    e.r.setButtonEnabled('btn_refresh_gun', true);
+    e.r.setButtonEnabled('btn_create', true);
+    e.r.setButtonEnabled('btn_refresh_preset', true);
+    e.r.setGuideGlow('pack_drop', true);
+    e.r.setLabel('pack_status', '状态: 等待拖入整合包'); e.r.setLabelColor('pack_status', t.warning);
+    await e.logLines('log_box', [
+      ['[SUCCESS] Pulses Swap v2.1 启动成功，作者: NimShade', LC.ok()],
+      ['[INFO] 数据库位置: …/PulsesSwap_database', LC.info()],
+      ['[INFO] 存储模式: 隔离', LC.info()],
+      ['[GUIDE] Step 1 · 拖入整合包根目录', LC.dim()],
+    ], 240);
+    await e.say('初始化完成，主界面就绪', 2000);
+    e.r.setGuideGlow('pack_drop', false);
+    await e.hideCaption();
+  }},
+
+  { title: '认识主界面', part: 'player', run: async e => {
+    await resetMainUI(e);
+    await e.say('主界面分<b>四块</b>，我们一个一个看');
+    const zones = [
+      ['pack_card',   '左上 · <b>拖整合包</b>的地方'],
+      ['preset_card', '左中 · <b>预设列表</b>'],
+      ['gunpack_card','右侧 · <b>枪包列表</b> 和 日志'],
+      ['btn_apply',   '底部 · <b>一键替换</b> 大按钮'],
+    ];
+    for (const [id, txt] of zones) {
+      await e.spotlight(id, 8);
+      await e.say(txt, 1800, { near: id, side: 'auto', gap: 26 });
+    }
+    await e.spotlight(null);
+    await e.hideCaption();
+  }},
+
+  // P4 拖入整合包 → default 出现 + 列表预览
+  { title: '拖入整合包', part: 'player', run: async e => {
+    await resetMainUI(e);
+    await e.say('把<b>整合包根目录</b>拖进左上角的大框');
+    await e.spotlight('pack_drop', 8);
+    e.r.setGuideGlow('pack_drop', true);
+    await e.dragFileTo('pack_drop', { icon: 'folder', name: 'MyModpack（整合包）' }, { flyDur: 1000 });
+    await simulatePackLoaded(e);
+    e.r.setGuideGlow('pack_drop', false);
+    await e.say('路径<b>变绿</b>，说明成功', 2000);
+    // default 预设自动出现
+    e.r.setListItems('preset_list', [{ text: 'default' }], { animate: true });
+    await e.spotlight('preset_list', 8);
+    await e.say('程序自动创建了一个 <b>default</b> 预设', 2200);
+    // 选中 default → 枪包列表显示（提前预览+校验）
+    await e.moveTo('preset_list');
+    await e.click('preset_list', { selectList: 0 });
+    await selectPresetAndPreview(e, 0, 'default', 'v1.0.0', 'Tacz文件夹');
+    await e.spotlight('gunpack_list', 8);
+    await e.say('右侧立即显示当前枪包内容，<b>无需替换就能预览</b>', 2600);
+    await e.spotlight(null);
+    await e.hideCaption();
+  }},
+
+  // P5 导入预设包 → 导入后即选中+预览+校验
+  { title: '导入预设包', part: 'player', run: async e => {
+    await resetMainUI(e);
+    await simulatePackLoaded(e);
+    e.r.setListItems('preset_list', [{ text: 'default' }], { animate: true });
+    await e.say('收到服主发的预设包，直接拖进左侧<b>虚线框</b>');
+    await e.spotlight('import_drop', 8);
+    await e.dragFileTo('import_drop', { icon: 'pack', name: 'PVP专用_v1.0.0.fgcpack' });
+    await e.logLines('log_box', [
+      ['[INFO] 检测到完整预设包，开始导入…', LC.info()],
+      ['[SUCCESS] 预设包导入完成', LC.ok()],
+    ], 220);
+    e.r.setListItems('preset_list', [{ text: 'default' }, { text: 'PVP 专用' }], { animate: true });
+    await e.spotlight('preset_list', 8);
+    await e.say('预设出现在列表里，<b>点一下它</b>', 2000);
+    await e.spotlight(null);
+    // 导入后立即选中+预览+校验（用户要求的核心逻辑）
+    await e.moveTo('preset_list');
+    await e.click('preset_list', { selectList: 1 });
+    await selectPresetAndPreview(e, 1, 'PVP 专用', 'v1.0.0', '预设文件夹');
+    await e.spotlight('gunpack_list', 8);
+    await e.say('导入后立即显示该预设的枪包内容<br><b>有问题这时就能发现</b>，不用等替换', 2800);
+    await e.spotlight(null);
+    await e.hideCaption();
+  }},
+
+  // P6 启用预设（替换前列表已有内容，校验已通过）
+  { title: '启用预设 · 一键替换', part: 'player', run: async e => {
+    await resetMainUI(e);
+    await simulatePackLoaded(e);
+    e.r.setListItems('preset_list', [{ text: 'default' }, { text: 'PVP 专用' }], { animate: true });
+    e.r.selectListItem('preset_list', 1);
+    e.r.setLabel('info_name', '预设: PVP 专用');
+    e.r.setLabel('info_version', '版本号: v1.0.0');
+    e.r.setButtonEnabled('btn_apply', true);
+    // 枪包列表已显示（来自预览）
+    e.r.setListItems('gunpack_list', greenGunpackItems(PRESET_DATA['PVP 专用']), { animate: true });
+    e.r.setLabel('gunpack_count', '共 3 个枪包 (来自 预设文件夹)');
+    await e.say('列表里已经能看到枪包内容<br>确认无误后，点底部大按钮');
+    await e.camera('btn_apply', 1.5, 700);
+    await e.say('点 <b>一键替换</b>');
+    await e.moveTo('btn_apply');
+    await e.click('btn_apply');
+    await e.camera(null);
+    e.r.show('progress', true); e.r.show('progress_label', true);
+    e.r.setButtonEnabled('btn_apply', false);
+    await e.progressTo('progress', 1, 2200, 'progress_label');
+    await e.logLines('log_box', [
+      ['[INFO] 正在应用预设「PVP 专用」…', LC.info()],
+      ['[INFO] 已替换 3 个枪包', LC.info()],
+      ['[SUCCESS] 预设应用完成', LC.ok()],
+    ], 220);
+    e.r.show('progress', false); e.r.show('progress_label', false);
+    e.r.setButtonText('btn_apply', '已应用 check');
+    e.r.setLabel('info_status', '状态: 已应用 check'); r_setColor(e,'info_status', T().success);
+    e.r.setLabel('pack_current', '当前预设: PVP 专用');
+    e.r.setLabel('gunpack_count', '共 3 个枪包 (来自 Tacz文件夹)');
+    await e.say('进度条走完就换好了<br><dim>已应用的预设显示「已应用」，不用重复点</dim>', 2800);
+    await e.hideCaption();
+  }},
+
+  // P7 换回其他预设 → 切换预览
+  { title: '换回其他预设', part: 'player', run: async e => {
+    await resetMainUI(e);
+    await simulatePackLoaded(e);
+    e.r.setListItems('preset_list', [{ text: 'default' }, { text: 'PVP 专用' }, { text: '生存养老' }], { animate: true });
+    e.r.selectListItem('preset_list', 1);
+    e.r.setLabel('info_name', '预设: PVP 专用');
+    e.r.setLabel('info_status', '状态: 已应用 check'); r_setColor(e,'info_status', T().success);
+    e.r.setButtonText('btn_apply', '已应用 check');
+    e.r.setListItems('gunpack_list', greenGunpackItems(PRESET_DATA['PVP 专用']), { animate: true });
+    e.r.setLabel('gunpack_count', '共 3 个枪包 (来自 Tacz文件夹)');
+    await e.say('想换回别的预设？<br>点<b>另一个</b> → 先预览内容 → 再替换');
+    await e.moveTo('preset_list');
+    await e.click('preset_list', { selectList: 2 });
+    // 切换预览：枪包列表立即更新为生存养老的内容
+    await selectPresetAndPreview(e, 2, '生存养老', 'v2.0.0', '预设文件夹');
+    await e.say('切换预设时，右侧<b>立即预览</b>该预设的枪包内容', 2400);
+    e.r.setButtonEnabled('btn_apply', true);
+    e.r.setButtonText('btn_apply', 'Step 4 · ⚡ 一键替换');
+    await e.moveTo('btn_apply');
+    await e.click('btn_apply');
+    e.r.show('progress', true); e.r.show('progress_label', true);
+    await e.progressTo('progress', 1, 1500);
+    e.r.show('progress', false); e.r.show('progress_label', false);
+    e.r.setButtonText('btn_apply', '已应用 check');
+    e.r.setLabel('info_status', '状态: 已应用 check'); r_setColor(e,'info_status', T().success);
+    e.r.setLabel('gunpack_count', '共 3 个枪包 (来自 Tacz文件夹)');
+    await e.say('就这么简单', 1600);
+    await e.hideCaption();
+  }},
+
+  // P8 收到更新包 → 应用后列表更新
+  { title: '收到更新包', part: 'player', run: async e => {
+    await resetMainUI(e);
+    await simulatePackLoaded(e);
+    e.r.setListItems('preset_list', [{ text: 'default' }, { text: 'PVP 专用' }], { animate: true });
+    e.r.selectListItem('preset_list', 1);
+    e.r.setLabel('info_name', '预设: PVP 专用');
+    e.r.setLabel('info_status', '状态: 已应用 check'); r_setColor(e,'info_status', T().success);
+    e.r.setButtonText('btn_apply', '已应用 check');
+    e.r.setListItems('gunpack_list', greenGunpackItems(PRESET_DATA['PVP 专用']), { animate: true });
+    await e.say('服主发了<b>更新包</b>，同样是拖');
+    await e.spotlight('import_drop', 8);
+    await e.dragFileTo('import_drop', { icon: 'update', name: 'PVP_v1.0.0_upd1.fgcupdate' });
+    e.r.show('progress', true);
+    await e.progressTo('progress', 1, 1600);
+    await e.logLines('log_box', [
+      ['[INFO] 检测到增量更新包，开始应用…', LC.info()],
+      ['[INFO] 新增 1 个枪包: sniper_ghost.zip', LC.info()],
+      ['[SUCCESS] 更新包应用完成，校验数据已同步', LC.ok()],
+    ], 220);
+    e.r.show('progress', false);
+    // 列表更新：出现新增的蓝条
+    const t = T();
+    const updated = [...PRESET_DATA['PVP 专用'], 'sniper_ghost.zip'];
+    const items = greenGunpackItems(PRESET_DATA['PVP 专用']);
+    items.push({ text: '✓ sniper_ghost.zip', fg: t.statusAdded, bg: t.statusAddedBg });
+    e.r.setListItems('gunpack_list', items, { animate: true });
+    e.r.setLabel('gunpack_count', '共 4 个枪包 (正常:4)');
+    await e.say('程序自动应用更新<br><dim>更新包只能用在已应用的预设上</dim>', 2800);
+    await e.spotlight(null);
+    await e.hideCaption();
+  }},
+
+  // P9 常用小按钮
+  { title: '常用小按钮', part: 'player', run: async e => {
+    await resetMainUI(e);
+    await simulatePackLoaded(e);
+    e.r.setListItems('preset_list', [{ text: 'default' }], { animate: true });
+    await e.say('三个常用按钮，记住就行');
+    const btns = [
+      ['btn_open_pack', '打开<b>整合包目录</b>'],
+      ['btn_open_tacz', '打开 <b>TACZ</b> 文件夹'],
+      ['btn_refresh_preset', '刷新<b>预设列表</b>'],
+    ];
+    for (const [id, txt] of btns) {
+      await e.camera(id, 2.2, 600);
+      await e.spotlight(id, 6);
+      await e.say(txt, 1700, { near: id, side: 'auto', gap: 30 });
+      await e.hideCaption();
+      await e.spotlight(null);
+    }
+    await e.camera(null);
+    await e.hideCaption();
+  }},
+
+  // P10 颜色对照
+  { title: '颜色对照 · 看懂枪包状态', part: 'player', run: async e => {
+    await resetMainUI(e);
+    await simulatePackLoaded(e);
+    e.r.setListItems('gunpack_list', mixedGunpackItems(), { animate: true });
+    e.r.setLabel('gunpack_count', '共 6 个枪包 (正常:3 缺失:1 多余:1 变更:1)');
+    await e.say('右侧枪包列表会出现<b>四种颜色</b>');
+    await e.camera('gunpack_list', 1.35, 700);
+    const rows = [
+      [0, '<b>绿色对勾</b> · 正常'],
+      [2, '<b style="color:#e8a0a0;">红色叉</b> · 缺失'],
+      [3, '<b style="color:#e0c98a;">黄色圆点</b> · 多余'],
+      [4, '<b style="color:#cfa8e0;">紫色闪电</b> · 变更'],
+    ];
+    for (const [idx, txt] of rows) {
+      await e.highlightListRow('gunpack_list', idx);
+      await e.say(txt, 1900, { near: 'gunpack_list', side: 'left', gap: 30 });
+      await e.hideCaption();
+    }
+    await e.spotlight(null);
+    await e.camera(null);
+    await e.say('出现<b style="color:#e8a0a0;">红叉</b>或<b style="color:#cfa8e0;">紫闪电</b>，说明枪包确实有问题，需要检查', 2600);
+    await e.hideCaption();
+  }},
+
+  // P11 出问题怎么办 → 修复后列表变全绿
+  { title: '出问题怎么办', part: 'player', run: async e => {
+    await resetMainUI(e);
+    await simulatePackLoaded(e);
+    e.r.setListItems('gunpack_list', mixedGunpackItems(), { animate: true });
+    e.r.setLabel('gunpack_count', '共 6 个枪包 (正常:3 缺失:1 多余:1 变更:1)');
+    await e.say('遇见枪包问题？<b>三步解决</b>');
+    await e.say('<b>第 1 步</b><br>点右上角「打开 TACZ」');
+    await e.camera('btn_open_tacz', 2.0, 600);
+    await e.moveTo('btn_open_tacz');
+    await e.click('btn_open_tacz');
+    await e.camera(null);
+    await e.showExplorer({
+      title: 'tacz',
+      items: [
+        { icon: 'pack', name: 'awp_dragon.zip' },
+        { icon: 'pack', name: 'ak47_redline.zip' },
+        { icon: 'folder', name: 'old_pistol', highlight: true },
+        { icon: 'pack', name: 'sniper_ghost.zip' },
+      ]
+    });
+    await e.say('<b>第 2 步</b><br>对照列表名字，把对应枪包<b>放进 / 移出</b> tacz 文件夹', 2800);
+    await e.hideExplorer();
+    await e.say('<b>第 3 步</b><br>回到程序，点 <b>刷新</b> 重新检查');
+    await e.moveTo('btn_refresh_gun');
+    await e.click('btn_refresh_gun');
+    // 修复后列表变全绿（关键逻辑）
+    e.r.setListItems('gunpack_list', greenGunpackItems(['awp_dragon.zip','ak47_redline.zip','m4a1_storm.zip','sniper_ghost.zip']), { animate: true });
+    e.r.setLabel('gunpack_count', '共 4 个枪包 (来自 Tacz文件夹)');
+    await e.logLines('log_box', [['[SUCCESS] 所有枪包校验通过 · 共 4 个', LC.ok()]], 300);
+    await e.say('修复完成，列表全部变绿', 2200);
+    await e.say('还搞不定？<br>把右侧列表<b>截图发给服主</b>，告诉他是哪个预设', 2600);
+    await e.hideCaption();
+  }},
+
+  // P12 玩家总结
+  { title: '玩家总结', part: 'player', run: async e => {
+    await resetMainUI(e);
+    await simulatePackLoaded(e);
+    e.r.setListItems('preset_list', [{ text: 'default' }], { animate: true });
+    await e.say('玩家日常就<b>三件事</b>');
+    await e.say('<b>1</b> · 拖整合包', 1600);
+    await e.say('<b>2</b> · 拖预设包 → 选预设 → 点替换', 2200);
+    await e.say('<b>3</b> · 收更新包 → 拖进去', 2000);
+    await e.say('<big>完</big>', 1800);
+    await e.hideCaption();
+  }},
+
+  /* ============================================================
+   * 开发者篇
+   * ============================================================ */
+  { title: '开发者篇 · 开场', part: 'dev', run: async e => {
+    await resetMainUI(e);
+    await e.say('<big>开发者篇</big><br><dim>创建整合包 · 生成预设 · 导出预设包 / 更新包</dim>', 2000);
+    await e.say('玩家只用会拖，<b>你要多做几步</b>', 2000);
+    await e.hideCaption();
+  }},
+
+  // D2 准备工作
+  { title: '准备工作 · 整合包结构', part: 'dev', run: async e => {
+    await resetMainUI(e);
+    await e.say('先准备一个<b>整合包</b>，里面要有 tacz 文件夹');
+    await e.showExplorer({
+      title: 'MyModpack（整合包根目录）',
+      items: [
+        { icon: 'folder', name: 'tacz', highlight: true, iconColor: '#c99a3e' },
+        { icon: 'folder', name: 'mods' },
+        { icon: 'folder', name: 'config' },
+        { icon: 'doc', name: '启动器.exe' },
+      ]
+    });
+    await e.say('把你的枪包（<b>ZIP 或文件夹</b>）放进 <b>tacz</b><br><dim>这样游戏里能直接用</dim>', 3000);
+    await e.hideExplorer();
+    await e.hideCaption();
+  }},
+
+  // D3 打开整合包 → default 出现 + 列表显示
+  { title: '打开整合包 · 自动建 default', part: 'dev', run: async e => {
+    await resetMainUI(e);
+    await e.say('打开程序和玩家一样 —— 把整合包拖进大框');
+    await e.spotlight('pack_drop', 8);
+    await e.dragFileTo('pack_drop', { icon: 'folder', name: 'MyModpack（整合包）' });
+    await simulatePackLoaded(e);
+    e.r.setListItems('preset_list', [{ text: 'default' }], { animate: true });
+    await e.spotlight('preset_list', 8);
+    await e.say('程序自动创建 <b>default</b> 预设<br><dim>内容是当前 tacz 里的所有枪包</dim>', 2800);
+    await e.spotlight(null);
+    await e.hideCaption();
+  }},
+
+  // D4 创建自己的预设
+  { title: '创建自己的预设', part: 'dev', run: async e => {
+    await resetMainUI(e);
+    await simulatePackLoaded(e);
+    e.r.setListItems('preset_list', [{ text: 'default' }], { animate: true });
+    await e.say('想要专属预设，点 <b>+ 创建</b>');
+    await e.camera('btn_create', 2.0, 600);
+    await e.moveTo('btn_create');
+    await e.click('btn_create');
+    await e.camera(null);
+    await e.say('输入名字 <b>PVP</b>，版本号 <b>v1.0.0</b>', 2200);
+    e.r.setListItems('preset_list', [{ text: 'default' }, { text: 'PVP' }], { animate: true });
+    await e.showExplorer({
+      title: '预设文件夹 · PVP',
+      items: [{ icon: 'doc', name: 'index.json', iconColor: '#5d8a9e' }],
+    });
+    await e.say('程序自动打开这个预设的<b>文件夹</b>', 2200);
+    await e.hideExplorer();
+    await e.hideCaption();
+  }},
+
+  // D5 放入枪包
+  { title: '放入枪包', part: 'dev', run: async e => {
+    await resetMainUI(e);
+    await simulatePackLoaded(e);
+    e.r.setListItems('preset_list', [{ text: 'default' }, { text: 'PVP' }], { animate: true });
+    await e.say('把你的枪包<b>拖进</b>这个文件夹');
+    const win = await e.showExplorer({
+      title: '预设文件夹 · PVP',
+      items: [{ icon: 'doc', name: 'index.json', iconColor: '#5d8a9e' }],
+    });
+    await e.wait(300);
+    const grid = win.querySelector('[data-role="grid"]');
+    for (const name of ['awp_dragon.zip','ak47_redline.zip','m4a1_storm.zip']) {
+      const cell = document.createElement('div');
+      cell.style.cssText = `display:flex;flex-direction:column;align-items:center;gap:5px;
+        padding:8px 4px;border-radius:8px;background:#E7F1EE;opacity:0;transform:scale(.6);
+        transition:all .4s cubic-bezier(.34,1.3,.44,1);`;
+      cell.innerHTML = `<div style="width:40px;height:40px;display:flex;align-items:center;
+        justify-content:center;">${(typeof VIcon === 'function') ? VIcon('pack',36,'#c99a3e') : ''}</div>
+        <div style="font-size:10px;color:#333;text-align:center;word-break:break-all;
+          line-height:1.2;max-width:94px;">${name}</div>`;
+      grid.appendChild(cell);
+      requestAnimationFrame(() => { cell.style.opacity = '1'; cell.style.transform = 'scale(1)'; });
+      await e.wait(340);
+    }
+    await e.say('ZIP 和文件夹都可以<br><dim>放完回到程序</dim>', 2400);
+    await e.hideExplorer();
+    await e.hideCaption();
+  }},
+
+  // D6 刷新并保存
+  { title: '刷新并保存', part: 'dev', run: async e => {
+    await resetMainUI(e);
+    await simulatePackLoaded(e);
+    e.r.setListItems('preset_list', [{ text: 'default' }, { text: 'PVP' }], { animate: true });
+    e.r.selectListItem('preset_list', 1);
+    e.r.setLabel('info_name', '预设: PVP');
+    e.r.setLabel('info_version', '版本号: v1.0.0');
+    await e.say('点 <b>刷新</b>');
+    await e.camera('btn_refresh_preset', 2.2, 600);
+    await e.moveTo('btn_refresh_preset');
+    await e.click('btn_refresh_preset');
+    await e.camera(null);
+    await e.logLines('log_box', [
+      ['[INFO] 读取预设文件夹…', LC.info()],
+      ['[SUCCESS] 校验数据已保存 (3 个枪包)', LC.ok()],
+    ], 220);
+    e.r.setListItems('gunpack_list', greenGunpackItems(PRESET_DATA['PVP 专用']), { animate: true });
+    e.r.setLabel('gunpack_count', '共 3 个枪包 (来自 预设文件夹)');
+    await e.say('程序读取你放进去的枪包，保存<b>校验数据</b><br>预设就算做好了', 2600);
+    await e.hideCaption();
+  }},
+
+  // D7 启用预设
+  { title: '启用预设', part: 'dev', run: async e => {
+    await resetMainUI(e);
+    await simulatePackLoaded(e);
+    e.r.setListItems('preset_list', [{ text: 'default' }, { text: 'PVP' }], { animate: true });
+    await e.say('想用就点一下它 → 再点<b>一键替换</b>');
+    await e.moveTo('preset_list');
+    await e.click('preset_list', { selectList: 1 });
+    await selectPresetAndPreview(e, 1, 'PVP', 'v1.0.0', '预设文件夹');
+    e.r.setButtonEnabled('btn_apply', true);
+    await e.moveTo('btn_apply');
+    await e.click('btn_apply');
+    e.r.show('progress', true); e.r.show('progress_label', true);
+    await e.progressTo('progress', 1, 1800);
+    e.r.show('progress', false); e.r.show('progress_label', false);
+    e.r.setButtonText('btn_apply', '已应用 check');
+    e.r.setLabel('info_status', '状态: 已应用 check'); r_setColor(e,'info_status', T().success);
+    e.r.setLabel('gunpack_count', '共 3 个枪包 (来自 Tacz文件夹)');
+    await e.logLines('log_box', [['[SUCCESS] 预设应用完成', LC.ok()]], 300);
+    await e.say('程序把 tacz 里的枪包换掉<br>换完游戏里就能看到新枪包', 2600);
+    await e.hideCaption();
+  }},
+
+  // D8 导出完整预设包
+  { title: '导出完整预设包', part: 'dev', run: async e => {
+    await resetMainUI(e);
+    await simulatePackLoaded(e);
+    e.r.setListItems('preset_list', [{ text: 'default' }, { text: 'PVP' }], { animate: true });
+    e.r.selectListItem('preset_list', 1);
+    e.r.setLabel('info_name', '预设: PVP');
+    e.r.setButtonEnabled('btn_export', true);
+    await e.say('想把预设发给别人，点 <b>导出</b>');
+    await e.camera('btn_export', 2.0, 600);
+    await e.moveTo('btn_export');
+    await e.click('btn_export');
+    await e.camera(null);
+    e.r.show('progress', true);
+    await e.progressTo('progress', 1, 1600);
+    e.r.show('progress', false);
+    await e.logLines('log_box', [['[SUCCESS] 预设已导出: PVP_v1.0.0.fgcpack', LC.ok()]], 300);
+    await e.say('生成一个 <b>.fgcpack</b> 文件 —— 完整预设包', 2400);
+    await e.say('<b>default 预设不能导出</b><br><dim>想导出就先右键「重命名」</dim>', 2600);
+    await e.hideCaption();
+  }},
+
+  // D9 导出更新包 · 增量
+  { title: '导出更新包 · 增量', part: 'dev', run: async e => {
+    await resetMainUI(e);
+    await simulatePackLoaded(e);
+    e.r.setListItems('preset_list', [{ text: 'default' }, { text: 'PVP' }], { animate: true });
+    e.r.selectListItem('preset_list', 1);
+    e.r.setLabel('info_name', '预设: PVP');
+    e.r.setLabel('info_status', '状态: 已应用 check'); r_setColor(e,'info_status', T().success);
+    e.r.setButtonEnabled('btn_update', true);
+    e.r.setListItems('gunpack_list', greenGunpackItems(PRESET_DATA['PVP 专用']), { animate: true });
+    await e.say('预设发出去后，你又改了枪包<br>比如<b>加了一个新枪包</b>');
+    // 列表出现新增蓝条
+    const t = T();
+    const items = greenGunpackItems(PRESET_DATA['PVP 专用']);
+    items.push({ text: '✓ sniper_ghost.zip', fg: t.statusAdded, bg: t.statusAddedBg });
+    e.r.setListItems('gunpack_list', items, { animate: true });
+    e.r.setLabel('gunpack_count', '共 4 个枪包 (新增:1)');
+    await e.logLines('log_box', [['[INFO] 检测到变更: 新增 1 个枪包', LC.warn()]], 400);
+    await e.say('不用重新发完整包 —— 点 <b>更新</b>');
+    await e.camera('btn_update', 2.0, 600);
+    await e.moveTo('btn_update');
+    await e.click('btn_update');
+    await e.camera(null);
+    e.r.show('progress', true);
+    await e.progressTo('progress', 1, 1500);
+    e.r.show('progress', false);
+    await e.logLines('log_box', [['[SUCCESS] 增量更新包已导出: PVP_v1.0.0_upd1.fgcupdate', LC.ok()]], 300);
+    await e.say('只把<b>改动的部分</b>打包成 <b>.fgcupdate</b><br><dim>体积小，方便发给玩家</dim>', 2800);
+    await e.hideCaption();
+  }},
+
+  // D10 右键菜单
+  { title: '右键菜单', part: 'dev', run: async e => {
+    await resetMainUI(e);
+    await simulatePackLoaded(e);
+    e.r.setListItems('preset_list', [{ text: 'default' }, { text: 'PVP' }, { text: '旧预设' }], { animate: true });
+    await e.say('<b>右键</b>预设，有几个常用功能');
+    await e.moveTo('preset_list');
+    await e.rightClick('preset_list', [
+      { label: '迁移预设…' },
+      { sep: true },
+      { label: '重命名' },
+      { sep: true },
+      { label: '删除预设' },
+    ], 2600);
+    await e.say('· <b>迁移预设</b>：挪到另一个整合包/数据库<br>· <b>重命名</b>：改名字<br>· <b>删除预设</b>：删掉不要的', 3000);
+    await e.closeContextMenu();
+    await e.say('<b>已应用</b>的预设不能直接删<br><dim>要先切到别的预设</dim>', 2600);
+    await e.hideCaption();
+  }},
+
+  // D11 数据库管理
+  { title: '数据库管理', part: 'dev', run: async e => {
+    await resetMainUI(e);
+    await e.say('打开<b>设置</b>，找到「数据库管理」');
+    await e.openDialog('settings');
+    await e.wait(500);
+    await e.spotlight('set_dbm_card', 6);
+    await e.say('三个按钮，只有需要时才动', 1800);
+    const items = [
+      ['set_btn_switch', '<b>切换数据库</b> · 换一个数据库位置'],
+      ['set_btn_merge',  '<b>合并数据库</b> · 把另一个库的预设并进来'],
+      ['set_btn_legacy', '<b>适配旧版数据库</b> · 升级老的 FGC_database'],
+    ];
+    for (const [id, txt] of items) {
+      await e.spotlight(id, 5);
+      await e.say(txt, 1800, { near: id, side: 'auto', gap: 24 });
+    }
+    await e.spotlight(null);
+    await e.closeDialog();
+    await e.hideCaption();
+  }},
+
+  // D12 存储模式
+  { title: '存储模式', part: 'dev', run: async e => {
+    await resetMainUI(e);
+    await e.say('设置里还有<b>存储模式</b>，两种');
+    await e.openDialog('settings');
+    await e.wait(400);
+    await e.spotlight('set_radio_iso', 5);
+    await e.say('<b>隔离存储</b>（默认 · 推荐）<br><dim>每个整合包独立预设库，互不影响</dim>', 2600);
+    await e.spotlight('set_radio_mer', 5);
+    await e.say('<b>合并存储</b><br><dim>所有整合包共用一套预设</dim>', 2200);
+    await e.spotlight(null);
+    await e.say('一般推荐<b>隔离存储</b><br>避免同名枪包互相覆盖', 2400);
+    await e.closeDialog();
+    await e.hideCaption();
+  }},
+
+  // D13 开发者总结
+  { title: '开发者总结', part: 'dev', run: async e => {
+    await resetMainUI(e);
+    await simulatePackLoaded(e);
+    e.r.setListItems('preset_list', [{ text: 'default' }, { text: 'PVP' }], { animate: true });
+    await e.say('开发者日常流程');
+    await e.say('<b>1</b> · 拖整合包', 1600);
+    await e.say('<b>2</b> · 创建预设 → 放枪包 → 刷新', 2200);
+    await e.say('<b>3</b> · 启用预设', 1600);
+    await e.say('<b>4</b> · 导出预设包 / 更新包，发给玩家', 2400);
+    await e.say('<big>完</big>', 2000);
+    await e.hideCaption();
+  }},
+
+];
+
+const SCENES = [...PLAYER_SCENES];
+
+// 辅助：设置 label 颜色
+function r_setColor(e, id, color) { e.r.setLabelColor(id, color); }
+
+</script>
+<script>
+(function () {
+  const stage = document.getElementById('stage');
+  const stageClip = document.getElementById('stage-clip');
+  const container = document.getElementById('app-container');
+
+  // stage 固定为窗口逻辑尺寸：内部所有覆盖层（光标/聚光灯/字幕/拖拽）坐标统一
+  stage.style.width = APP_MODEL.window.width + 'px';
+  stage.style.height = APP_MODEL.window.height + 'px';
+  stageClip.style.width = APP_MODEL.window.width + 'px';
+  stageClip.style.height = APP_MODEL.window.height + 'px';
+
+  const renderer = new CtkRenderer(container, APP_MODEL);
+  const engine = new AnimEngine(stage, renderer);
+  let win = renderer.render();
+  win.style.opacity = '0';
+
+  // 自适应缩放：只缩放 stage（transform），stage 内部逻辑坐标不变
+  function fitStage() {
+    const pad = 30;
+    const availW = innerWidth - pad, availH = innerHeight - 96;
+    const s = Math.min(1.15, availW / APP_MODEL.window.width, availH / APP_MODEL.window.height);
+    stageClip.style.transform = `scale(${s})`;
+    stageClip.style.transformOrigin = 'center center';
+  }
+  fitStage();
+  addEventListener('resize', fitStage);
+
+  document.getElementById('intro-title').textContent = APP_MODEL.meta.title;
+  document.getElementById('intro-sub').textContent = APP_MODEL.meta.subtitle;
+
+  // 分镜导航点
+  const nav = document.getElementById('scene-nav');
+  engine.setScenes(SCENES);
+  SCENES.forEach((sc, i) => {
+    const d = document.createElement('div');
+    d.className = 'dot' + (sc.part === 'dev' ? ' dev' : '');
+    d.title = (sc.part === 'dev' ? '【开发者】' : '【玩家】') + sc.title;
+    d.onclick = () => jumpTo(i);
+    nav.appendChild(d);
+  });
+
+  const chapterEl = document.getElementById('chapter');
+  const fillEl = document.getElementById('progress-fill');
+  let lastPart = null;
+  engine.onSceneChange = async (i, sc) => {
+    nav.querySelectorAll('.dot').forEach((d, k) => {
+      d.classList.toggle('active', k === i);
+      d.classList.toggle('done', k < i);
+    });
+    fillEl.style.width = (i / SCENES.length * 100) + '%';
+    chapterEl.querySelector('.num').textContent =
+      'PART ' + String(i + 1).padStart(2, '0') + ' / ' + String(SCENES.length).padStart(2, '0');
+    chapterEl.querySelector('.name').textContent = sc.title;
+    chapterEl.style.opacity = 1;
+    clearTimeout(chapterEl._t);
+    chapterEl._t = setTimeout(() => chapterEl.style.opacity = 0, 3200);
+    // 篇章横幅
+    if (sc.part !== lastPart) {
+      lastPart = sc.part;
+      showPartBanner(sc.part === 'dev' ? '开发者篇' : '玩家篇',
+                     sc.part === 'dev' ? 'DEVELOPER' : 'PLAYER');
+    }
+  };
+  engine.onEnd = () => { fillEl.style.width = '100%'; };
+
+  function showPartBanner(big, sub) {
+    const b = document.getElementById('part-banner');
+    const bl = document.getElementById('blur-layer');
+    const sc = document.getElementById('stage-clip');
+    b.querySelector('.big').textContent = big;
+    b.querySelector('.sub').textContent = sub;
+    // 隐藏鼠标指针和光环（立即生效，不用 transition）
+    if (engine.cursor) { engine.cursor.style.transition = 'none'; engine.cursor.style.opacity = '0'; }
+    if (engine.halo) { engine.halo.style.transition = 'none'; engine.halo.style.opacity = '0'; }
+    // 背景高斯模糊 + 舞台微暗
+    bl.style.opacity = '1';
+    sc.style.filter = 'blur(6px) brightness(.6)';
+    b.style.opacity = 1;
+    b.querySelector('.inner').style.transform = 'scale(1) translateY(0)';
+    clearTimeout(b._t);
+    b._t = setTimeout(() => {
+      b.style.opacity = 0;
+      b.querySelector('.inner').style.transform = 'scale(.9) translateY(20px)';
+      bl.style.opacity = '0';
+      sc.style.filter = 'none';
+      // 恢复鼠标指针（恢复 transition）
+      if (engine.cursor && engine.playing) { engine.cursor.style.transition = 'opacity .3s'; engine.cursor.style.opacity = '1'; }
+      if (engine.halo && engine.playing) { engine.halo.style.transition = 'opacity .4s,transform .35s cubic-bezier(.32,.72,0,1)'; engine.halo.style.opacity = '1'; }
+    }, 2000);
+  }
+
+  async function jumpTo(i) {
+    engine.stop();
+    engine.playing = false;
+    // 过场：窗口淡出
+    const oldWin = renderer.container.firstChild;
+    if (oldWin) oldWin.animate([{opacity:1},{opacity:0, transform:'translateY(-8px) scale(.998)'}], {duration:200, easing:'ease-in', fill:'forwards'});
+    await new Promise(r => setTimeout(r, 200));
+    // 清理覆盖层
+    if (engine.overlay) {
+      engine.overlay.querySelectorAll('*').forEach(n => n.getAnimations && n.getAnimations().forEach(a => a.cancel()));
+      engine.spot.style.opacity = 0;
+      engine.dim.style.opacity = 0;
+      engine.caption._on = false;
+      engine.caption.style.opacity = 0;
+    }
+    // 重渲染
+    renderer.widgetEls = new Map();
+    win = renderer.render();
+    lastPart = i > 0 ? SCENES[i - 1].part : null;
+    // 过场：窗口淡入
+    win.style.opacity = '0';
+    win.animate([{opacity:0, transform:'translateY(-8px) scale(.998)'},{opacity:1, transform:'none'}], {duration:350, easing:'cubic-bezier(.32,.72,0,1)', fill:'forwards'});
+    await new Promise(r => setTimeout(r, 120));
+    engine.playFrom(i);
+  }
+
+  document.getElementById('play-btn').onclick = async () => {
+    const intro = document.getElementById('intro');
+    // intro 快速淡出（350ms），同时窗口入场并行
+    intro.animate([
+      { opacity: 1, transform: 'scale(1)', filter: 'blur(0)' },
+      { opacity: 0, transform: 'scale(1.05) translateY(-16px)', filter: 'blur(6px)' }
+    ], { duration: 350, easing: 'cubic-bezier(.5,0,.75,0)', fill: 'forwards' });
+    document.getElementById('controls').style.display = 'flex';
+    await new Promise(r => setTimeout(r, 350));
+    intro.style.display = 'none';
+    // 窗口先入场（await 等完成），再开始播放
+    engine.playing = true;
+    await engine.windowIn(win);
+    engine.playFrom(0);
+  };
+  document.getElementById('btn-full').onclick = () => jumpTo(0);
+  document.getElementById('btn-replay').onclick = () => jumpTo(Math.max(0, engine.sceneIndex));
+  document.getElementById('btn-speed').onclick = e2 => {
+    engine.speed = engine.speed >= 2 ? 0.5 : engine.speed + 0.5;
+    e2.target.textContent = engine.speed.toFixed(1) + '×';
+  };
+})();
+</script>
+</body>
+</html>

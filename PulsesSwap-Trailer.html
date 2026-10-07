@@ -325,23 +325,19 @@
   /* ===== 顶层高斯模糊（覆盖软件窗口 / MC 窗口 / 资源管理器） ===== */
   /* 背景已做整体高斯模糊时，文字不再需要衬底/阴影 */
   /* ===== 待机灵动 =====
-     全片不允许出现"完全静止"的帧：窗口、卡片、按钮、MC 窗、字幕衬底
-     在停顿时都保持极小幅度呼吸。幅度控制在 1-3px / 0.2deg 以内，不抢戏。 */
-  @keyframes idleWin  { 0%,100% { transform: translateY(0) rotateZ(0deg); } 50% { transform: translateY(-2.6px) rotateZ(.16deg); } }
-  @keyframes idleCard { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-1.7px); } }
-  @keyframes idleGlow { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.12); } }
-  @keyframes idleVig  { 0%,100% { transform: translate(-50%,-50%) scale(1); } 50% { transform: translate(-50%,-50%) scale(1.07); } }
-  #app-container .ctk-window { animation: idleWin 6.2s ease-in-out infinite; }
-  #app-container .ctk-card   { animation: idleCard 5.4s ease-in-out infinite; }
-  #app-container .ctk-card:nth-of-type(2n) { animation-duration: 6.6s; }
-  #app-container .ctk-card:nth-of-type(3n) { animation-duration: 7.5s; }
-  #app-container .ctk-panel  { animation: idleCard 4.8s ease-in-out infinite; }
+     只能用 GSAP 不碰的属性。transform 全部归 GSAP 管
+     （#mc / #explorer / .ctk-window / .txt 都在 GSAP 的 transform 里），
+     CSS 动画碰 transform 会直接覆盖掉 GSAP 的位移和居中 —— 之前就是这么错位的。
+     所以这里只用 filter: brightness() 做呼吸，幅度 10%，不可能影响布局。 */
+  @keyframes idleGlow { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.10); } }
+  #app-container .ctk-card   { animation: idleGlow 5.4s ease-in-out infinite; }
+  #app-container .ctk-card:nth-of-type(2n) { animation-duration: 6.7s; }
+  #app-container .ctk-card:nth-of-type(3n) { animation-duration: 7.6s; }
+  #app-container .ctk-panel  { animation: idleGlow 4.8s ease-in-out infinite; }
   #app-container .ctk-button { animation: idleGlow 4.2s ease-in-out infinite; }
   #app-container .ctk-button:nth-of-type(2n) { animation-duration: 5.3s; }
-  #mc { animation: idleWin 7.1s ease-in-out infinite; }
-  #gate .g-card { animation: idleCard 5.9s ease-in-out infinite; }
-  /* 字幕衬底轻微呼吸（不动 .txt 本体，避免和 GSAP 抢 transform） */
-  .txt::before { animation: idleVig 6.8s ease-in-out infinite; }
+  #mc        { animation: idleGlow 6.4s ease-in-out infinite; }
+  #explorer  { animation: idleGlow 5.9s ease-in-out infinite; }
 
   /* 烫金行同样不能有衬底：暗块会从透明字形里透出来 */
   .txt.txt-gold::before { opacity: 0 !important; }

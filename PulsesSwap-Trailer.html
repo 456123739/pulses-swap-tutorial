@@ -334,7 +334,9 @@
      高级感改由文字自身的运动承担（逐字错峰浮现 + 持续浮动）。 */
   .ch {
     display: inline-block;
-    will-change: transform, opacity, filter;
+    /* 影子挂在字上（静态），入场只动 opacity/位移 —— 不再逐帧重算 filter */
+    text-shadow: 0 3px 8px rgba(0,0,0,.92), 0 0 18px rgba(0,0,0,.70);
+    will-change: transform, opacity;
     /* 影子是每个字自己投的，随字浮现而生长 —— 所以影子永远不会早于字出现 */
   }
 
@@ -349,13 +351,17 @@
 
   #blurTop {
     position: fixed; inset: 0; z-index: 35; pointer-events: none; opacity: 0;
-    backdrop-filter: blur(24px) saturate(1.2) brightness(.52);
-    -webkit-backdrop-filter: blur(24px) saturate(1.2) brightness(.52);
-    background: rgba(3,5,6,.26);
+    /* 模糊半径直接决定 backdrop-filter 的开销，24px → 13px 便宜一大截；
+       并提前提升为合成层，避免出现那一刻才分配缓冲。 */
+    backdrop-filter: blur(13px) saturate(1.2) brightness(.52);
+    -webkit-backdrop-filter: blur(13px) saturate(1.2) brightness(.52);
+    background: rgba(3,5,6,.40);
+    will-change: opacity; transform: translateZ(0);
   }
 
   /* ===== Minecraft Java 版窗口 ===== */
   #mc {
+    will-change: opacity, transform; transform: translateZ(0);
     position: fixed; right: 3vw; top: 50%;
     width: 430px; z-index: 32; opacity: 0; pointer-events: none;
     transform-origin: right center;
@@ -505,6 +511,7 @@
 
   /* ===== 资源管理器（展示替换过程） ===== */
   #explorer {
+    will-change: opacity, transform; transform: translateZ(0);
     position: fixed; right: 3.4vw; bottom: 5vh;
     width: 322px; z-index: 30; opacity: 0; pointer-events: none;
     transform: translateX(40px);
@@ -587,9 +594,12 @@
   }
 
   #blur {
+    /* 原来是全屏 backdrop-filter: blur(18px) —— GPU 上最贵的操作之一，
+       而且首次出现要分配离屏缓冲，正好卡在"窗口弹出"和"0.84s"两个切点上。
+       改成纯色调层：观感接近，成本归零。 */
     position: fixed; inset: 0; z-index: 5; pointer-events: none;
-    backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
-    background: rgba(3,5,6,.28); opacity: 0;
+    background: rgba(3,5,6,.52); opacity: 0;
+    will-change: opacity; transform: translateZ(0);
   }
 
   /* 3D scene — sized exactly to the window, scaled to fit */
@@ -1641,7 +1651,7 @@ const APP_MODEL = {
     // 沿字形轮廓扩散的黑色柔影 —— 贴着笔画走，所以永远不会盖到文字以外的 UI。
     //   半径太小(3px)会吃掉笔画、让亮字显脏；半径太大(16/44px)又散得压不暗白底。
     //   8px 主影负责在白底上撑出对比，20px 副影负责过渡自然。
-    d.style.textShadow = '0 2px 8px rgba(0,0,0,.92), 0 0 20px rgba(0,0,0,.72)';
+    d.style.textShadow = opts.gold ? '0 2px 8px rgba(0,0,0,.92), 0 0 20px rgba(0,0,0,.72)' : 'none';
     d.innerHTML = opts.html.replace(/\{a\}/g, '<span style="color:' + ACCENT + ';">')
       .replace(/\{\/a\}/g, '</span>');
     d.style.filter = 'blur(12px)';
@@ -2224,42 +2234,62 @@ const APP_MODEL = {
   })();
 
   // 故障横条
+  // ── 故障条 / 裂纹：预建对象池 ──
+  // 原来每次调用都 createElement + appendChild + 动画结束后 remove()。
+  // 这些调用密集落在 12.75 / 12.82（揭示前一拍），一次就是十几个节点，
+  // 创建+布局+移除的开销正好压在关键帧上 → 掉帧。
+  // 改成启动时建好固定数量的节点，用的时候只改样式、只动透明度。
+  const GLITCH_POOL = [];
+  const CRACK_POOL = [];
+  (function buildEffectPools() {
+    for (let i = 0; i < 24; i++) {
+      const b = document.createElement('div');
+      b.className = 'glitch-bar';
+      b.style.cssText += ';opacity:0;visibility:hidden;';
+      glitchLayer.appendChild(b);
+      GLITCH_POOL.push(b);
+    }
+    for (let i = 0; i < 12; i++) {
+      const c = document.createElement('div');
+      c.className = 'crack';
+      c.style.cssText += ';opacity:0;visibility:hidden;left:50%;';
+      glitchLayer.appendChild(c);
+      CRACK_POOL.push(c);
+    }
+  })();
+  let glitchCursor = 0, crackCursor = 0;
+
   function glitchBurst(intensity) {
     const n = 2 + Math.floor((intensity || 1) * 4);
     for (let i = 0; i < n; i++) {
-      const bar = document.createElement('div');
-      bar.className = 'glitch-bar';
+      const bar = GLITCH_POOL[glitchCursor++ % GLITCH_POOL.length];
+      bar.style.visibility = 'visible';
       bar.style.top = (Math.random() * 100) + '%';
       bar.style.height = (1 + Math.random() * 3) + 'px';
-      glitchLayer.appendChild(bar);
+      gsap.killTweensOf(bar);
       gsap.fromTo(bar,
         { opacity: 0, x: (Math.random() - .5) * 60 },
         { opacity: .7 + Math.random() * .3, duration: .05 + Math.random() * .07,
           repeat: 3, yoyo: true,
-          onComplete: () => {
-            gsap.to(bar, { opacity: 0, duration: .1, onComplete: () => bar.remove() });
-          } });
+          onComplete: () => { gsap.set(bar, { opacity: 0 }); bar.style.visibility = 'hidden'; } });
     }
   }
 
-  // 断裂纹（从中心向两侧裂开）
   function crackBurst() {
     for (let i = 0; i < 3; i++) {
-      const c = document.createElement('div');
-      c.className = 'crack';
+      const c = CRACK_POOL[crackCursor++ % CRACK_POOL.length];
+      c.style.visibility = 'visible';
       c.style.top = (28 + Math.random() * 44) + '%';
-      c.style.left = '50%';
-      c.style.width = '0px';
-      glitchLayer.appendChild(c);
+      gsap.killTweensOf(c);
       gsap.fromTo(c,
         { width: 0, opacity: 0, xPercent: -50 },
         { width: (30 + Math.random() * 70) + 'vw', opacity: .5,
-          duration: .28 + Math.random() * .25, ease: 'appleSpring',
-          onComplete: () => gsap.to(c, { opacity: 0, duration: .5, delay: .3, onComplete: () => c.remove() }) });
+          duration: .12 + Math.random() * .1,
+          onComplete: () => { gsap.to(c, { opacity: 0, duration: .18,
+            onComplete: () => { gsap.set(c, { opacity: 0 }); c.style.visibility = 'hidden'; } }); } });
     }
   }
 
-  // 氛围总控
   function chaosOn() {
     gsap.to(chaosLayer, { opacity: 1, duration: 1.8, ease: 'appleSoft' });
     gsap.to(noiseEl, { opacity: .55, duration: 2.2, ease: 'appleSoft' });
@@ -2326,12 +2356,12 @@ const APP_MODEL = {
       // 逐字：从下方 62% 处带模糊浮上来，影子同时从"无"长到"实"。
       // 影子和字在同一个 tween、同一个 stagger 里 —— 所以永远是字投下影，
       // 不会出现"先有一块黑底，再把字摆上去"。
-      const NO_SHADOW = 'blur(8px) drop-shadow(0 0 0 rgba(0,0,0,0))';
-      const CAST_SHADOW = 'blur(0px) drop-shadow(0 3px 7px rgba(0,0,0,.95)) drop-shadow(0 0 16px rgba(0,0,0,.75))';
-      gsap.set(chars, { opacity: 0, yPercent: 62, filter: NO_SHADOW });
+      // 只动 opacity + 位移（都是合成器友好的属性）；影子由 .ch 的静态 text-shadow 承担，
+      // 字的透明度从 0 到 1，影子自然跟着一起浮现 —— 效果一样但不逐帧重算 filter。
+      gsap.set(chars, { opacity: 0, yPercent: 62 });
       gsap.to(el, Object.assign(base, {
         onStart: () => gsap.to(chars, {
-          opacity: 1, yPercent: 0, filter: CAST_SHADOW,
+          opacity: 1, yPercent: 0,
           duration: dur * 0.85, delay: delay,
           ease: 'appleOut', stagger: Math.min(0.045, dur * 0.05),
         }),

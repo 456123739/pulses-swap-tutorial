@@ -78,6 +78,54 @@
     opacity: .5;
   }
 
+  /* ===== 现状铺垫 · 深化氛围层 ===== */
+  /* 漂浮的混乱枪包图标 */
+  #chaos { position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: 0; overflow: hidden; }
+  .chaos-item {
+    position: absolute; will-change: transform, opacity;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 10px;
+    background: rgba(18,24,26,.58);
+    border: 1px solid rgba(127,212,193,.16);
+    box-shadow: 0 12px 34px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.05);
+    -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
+  }
+  /* 胶片噪点 */
+  #noise {
+    position: fixed; inset: -20%; z-index: 1; pointer-events: none; opacity: 0;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.42'/%3E%3C/svg%3E");
+    animation: noiseShift .28s steps(2) infinite;
+  }
+  @keyframes noiseShift {
+    0%   { transform: translate(0,0); }
+    33%  { transform: translate(-2%,1%); }
+    66%  { transform: translate(1%,-2%); }
+    100% { transform: translate(0,0); }
+  }
+  /* 压迫暗角 */
+  #vig {
+    position: fixed; inset: 0; z-index: 2; pointer-events: none; opacity: 0;
+    background: radial-gradient(ellipse at 50% 48%, transparent 22%, rgba(0,0,0,.55) 62%, rgba(0,0,0,.88) 100%);
+  }
+  /* 危机色温层 */
+  #mood {
+    position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: 0;
+    background: radial-gradient(ellipse at 50% 62%, rgba(190,70,70,.20), transparent 68%);
+  }
+  /* 故障横条 */
+  .glitch-bar {
+    position: absolute; left: 0; width: 100%; height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(127,212,193,.75), transparent);
+    box-shadow: 0 0 14px rgba(127,212,193,.5);
+    opacity: 0; will-change: transform, opacity;
+  }
+  /* 断裂纹 */
+  .crack {
+    position: absolute; background: linear-gradient(90deg, transparent, rgba(200,90,90,.55), transparent);
+    height: 1px; opacity: 0; will-change: opacity, transform;
+  }
+
   /* ===== 拖拽幽灵卡片（3D 场景内，随窗口一起变换） ===== */
   .drag-ghost {
     position: absolute; left: 0; top: 0;
@@ -183,6 +231,10 @@
 </head>
 <body>
   <canvas id="cv"></canvas>
+  <div id="chaos"></div>
+  <div id="noise"></div>
+  <div id="mood"></div>
+  <div id="vig"></div>
   <div id="patterns">
     <div class="p-grid"></div>
     <div class="p-grid-top"></div>
@@ -192,6 +244,7 @@
     </div>
     <div class="p-scan" id="pScan"></div>
   </div>
+  <div id="glitchLayer" style="position:fixed;inset:0;z-index:2;pointer-events:none;overflow:hidden;"></div>
   <div class="aura a1"></div>
   <div class="aura a2"></div>
   <div class="aura a3"></div>
@@ -1097,6 +1150,104 @@ const APP_MODEL = {
     }
   })();
 
+  // ---- 深化氛围层 ----
+  const chaosLayer = document.getElementById('chaos');
+  const noiseEl = document.getElementById('noise');
+  const moodEl = document.getElementById('mood');
+  const vigEl = document.getElementById('vig');
+  const glitchLayer = document.getElementById('glitchLayer');
+  const chaosItems = [];
+
+  // 漂浮的混乱枪包图标（半透明，缓慢漂移旋转，营造"乱"）
+  (function buildChaos() {
+    const iconNames = ['pack', 'folder', 'zip', 'doc', 'folderOpen'];
+    const N = 22;
+    for (let i = 0; i < N; i++) {
+      const it = document.createElement('div');
+      it.className = 'chaos-item';
+      const size = 34 + Math.random() * 46;   // 34~80
+      it.style.width = size + 'px';
+      it.style.height = size + 'px';
+      const icon = (typeof VIcon === 'function')
+        ? VIcon(iconNames[i % iconNames.length], size * 0.52, '#7fd4c1') : '';
+      it.innerHTML = icon;
+      it.style.left = (5 + Math.random() * 90) + '%';
+      it.style.top = (6 + Math.random() * 86) + '%';
+      it.style.opacity = '0';
+      chaosLayer.appendChild(it);
+      chaosItems.push(it);
+      // 无限缓慢漂移 + 微旋转 + 呼吸
+      const drift = 26 + Math.random() * 54;
+      gsap.to(it, {
+        x: (Math.random() - .5) * 2 * drift,
+        y: (Math.random() - .5) * 2 * drift,
+        rotation: (Math.random() - .5) * 40,
+        duration: 7 + Math.random() * 9,
+        ease: 'sine.inOut',
+        yoyo: true, repeat: -1, delay: Math.random() * 3
+      });
+      gsap.to(it, {
+        opacity: .16 + Math.random() * .34,
+        duration: 2.4 + Math.random() * 2,
+        ease: 'sine.inOut', yoyo: true, repeat: -1, delay: Math.random() * 2
+      });
+    }
+  })();
+
+  // 故障横条
+  function glitchBurst(intensity) {
+    const n = 2 + Math.floor((intensity || 1) * 4);
+    for (let i = 0; i < n; i++) {
+      const bar = document.createElement('div');
+      bar.className = 'glitch-bar';
+      bar.style.top = (Math.random() * 100) + '%';
+      bar.style.height = (1 + Math.random() * 3) + 'px';
+      glitchLayer.appendChild(bar);
+      gsap.fromTo(bar,
+        { opacity: 0, x: (Math.random() - .5) * 60 },
+        { opacity: .7 + Math.random() * .3, duration: .05 + Math.random() * .07,
+          repeat: 3, yoyo: true,
+          onComplete: () => {
+            gsap.to(bar, { opacity: 0, duration: .1, onComplete: () => bar.remove() });
+          } });
+    }
+  }
+
+  // 断裂纹（从中心向两侧裂开）
+  function crackBurst() {
+    for (let i = 0; i < 3; i++) {
+      const c = document.createElement('div');
+      c.className = 'crack';
+      c.style.top = (28 + Math.random() * 44) + '%';
+      c.style.left = '50%';
+      c.style.width = '0px';
+      glitchLayer.appendChild(c);
+      gsap.fromTo(c,
+        { width: 0, opacity: 0, xPercent: -50 },
+        { width: (30 + Math.random() * 70) + 'vw', opacity: .5,
+          duration: .28 + Math.random() * .25, ease: 'power3.out',
+          onComplete: () => gsap.to(c, { opacity: 0, duration: .5, delay: .3, onComplete: () => c.remove() }) });
+    }
+  }
+
+  // 氛围总控
+  function chaosOn() {
+    gsap.to(chaosLayer, { opacity: 1, duration: 1.8, ease: 'power2.out' });
+    gsap.to(noiseEl, { opacity: .55, duration: 2.2, ease: 'power2.out' });
+    gsap.to(vigEl, { opacity: .55, duration: 2.4, ease: 'power2.out' });
+  }
+  function chaosOff() {
+    gsap.to([chaosLayer, noiseEl, vigEl, moodEl], { opacity: 0, duration: 1.4, ease: 'power2.inOut' });
+  }
+  // 每陈述一个痛点，压力递增
+  function pressureUp(level) {
+    // level 0~1，越高越压抑
+    gsap.to(vigEl, { opacity: .45 + level * .4, duration: 1.6, ease: 'power2.inOut' });
+    gsap.to(moodEl, { opacity: .25 + level * .6, duration: 1.6, ease: 'power2.inOut' });
+    gsap.to(['.p-grid'], { filter: 'hue-rotate(' + (-level * 95) + 'deg) saturate(' + (1 + level * .5) + ')', duration: 1.6, ease: 'power2.inOut' });
+    gsap.to(chaosItems, { filter: 'hue-rotate(' + (-level * 70) + 'deg)', duration: 1.6, ease: 'power2.inOut' });
+  }
+
   function patternsOn() {
     gsap.to(patterns, { opacity: 1, duration: 1.6, ease: 'power2.out' });
   }
@@ -1150,26 +1301,41 @@ const APP_MODEL = {
     gsap.set(winEl, { opacity: 0 });
     // 图案层复位（现状陈述阶段启用）
     gsap.set(patterns, { opacity: 0, filter: 'brightness(1)' });
+    gsap.set([chaosLayer, noiseEl, vigEl, moodEl], { opacity: 0 });
+    gsap.set(['.p-grid'], { filter: 'none' });
+    gsap.set(chaosItems, { filter: 'none', scale: 1 });
+    glitchLayer.innerHTML = '';
     document.querySelectorAll('.p-grid,.p-grid-top').forEach(g => g.style.backgroundSize = '64px 64px');
     tl = gsap.timeline({ onComplete: () => { repBtn.style.opacity = '1'; } });
 
     // ═══════════ ACT 1: 现状 — 痛点 (0-14s) ═══════════
     // 无产品 UI，纯黑幕 + 冷灰文字 + 压迫光晕，讲"换枪包"的痛苦
 
-    // 现状铺垫：背景图案开始蓄势
-    tl.add(() => patternsOn(), 0);
+    // ══ 现状铺垫：多层氛围同时起势 ══
+    tl.add(() => { patternsOn(); chaosOn(); }, 0);
+    // 扫描线周期性掠过
     tl.add(() => scanSweep(), 0.3);
     tl.add(() => scanSweep(), 4.4);
     tl.add(() => scanSweep(), 8.2);
     tl.add(() => scanSweep(), 11.8);
+    // 同心环脉冲
     tl.add(() => ringPulse(0.4, 3.2, 0), 0.5);
     tl.add(() => ringPulse(0.5, 3.0, 0), 4.0);
     tl.add(() => ringPulse(0.6, 3.0, 0), 8.0);
     tl.add(() => ringPulse(0.7, 2.6, 0), 11.4);
-    // 图案随痛点数增多而增强
-    tl.to('.p-grid', { backgroundSize: '48px 48px', duration: 7, ease: 'power1.inOut' }, 3.5);
-    tl.to('.p-grid-top', { backgroundSize: '48px 48px', duration: 7, ease: 'power1.inOut' }, 3.5);
-    tl.to('#patterns', { filter: 'brightness(1.35)', duration: 6, ease: 'power2.in' }, 7.5);
+    // 网格加密 + 亮度提升（视觉越来越"满"）
+    tl.to('.p-grid', { backgroundSize: '44px 44px', duration: 9, ease: 'power1.inOut' }, 2.5);
+    tl.to('.p-grid-top', { backgroundSize: '44px 44px', duration: 9, ease: 'power1.inOut' }, 2.5);
+    tl.to('#patterns', { filter: 'brightness(1.45)', duration: 8, ease: 'power2.in' }, 6.0);
+    // 混乱图标随压力聚拢（越乱越挤）
+    tl.to(chaosItems, { scale: 1.22, duration: 9, ease: 'power1.inOut' }, 2.5);
+
+    // —— 每个痛点点燃一次故障脉冲 + 压力抬升 ——
+    tl.add(() => { glitchBurst(1); crackBurst(); pressureUp(0.30); }, 3.9);
+    tl.add(() => { glitchBurst(1.6); crackBurst(); pressureUp(0.60); }, 7.7);
+    tl.add(() => { glitchBurst(2.2); crackBurst(); pressureUp(0.92); }, 11.3);
+    // 陈述结束前最压抑的一刻
+    tl.add(() => glitchBurst(2.6), 13.4);
 
     const p1 = makeText({ size: 30, html: '玩过 TaCZ 的都知道', color: '#cfdfe0' });
     tl.add(() => { txtIn(p1, 1.0, 0); blurOn(); }, 0.6);
@@ -1206,7 +1372,7 @@ const APP_MODEL = {
     const t0 = makeText({ big: true, size: 66, html: 'PULSES{a}SWAP{/a}', color: '#f2faf7', yOffset: 0 });
     t0.style.textShadow = '0 0 50px rgba(127,212,193,.5)';
     // 最佳方案登场：图案淡出，窗口首次亮相
-    tl.add(() => patternsOff(), 13.9);
+    tl.add(() => { patternsOff(); chaosOff(); }, 13.9);
     tl.to('#patterns', { filter: 'brightness(1)', duration: 1.2, ease: 'power2.out' }, 13.9);
     tl.add(() => txtIn(t0, 1.0, 0), 14.2);
     tl.to('.aura', { opacity: 1, scale: 1.4, duration: 2, ease: 'power3.out' }, 14.0);

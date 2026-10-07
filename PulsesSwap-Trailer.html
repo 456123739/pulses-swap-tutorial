@@ -114,11 +114,13 @@
     left: 50%; top: 50%;
     transform: translate(-50%, -50%) scale(.9);
     will-change: filter, opacity, transform;
+    /* 逐字阴影：紧贴字形，形成"字下面有影子"的立体感 */
     text-shadow:
-      0 0 3px rgba(0,0,0,.98),
-      0 0 9px rgba(0,0,0,.92),
-      0 2px 22px rgba(0,0,0,.88),
-      0 0 60px rgba(0,0,0,.6);
+      0 1px 1px rgba(0,0,0,.98),
+      0 2px 3px rgba(0,0,0,.95),
+      0 4px 8px rgba(0,0,0,.85),
+      0 6px 18px rgba(0,0,0,.6),
+      0 0 10px rgba(0,0,0,.55);
     user-select: none;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
@@ -128,22 +130,10 @@
     overflow-wrap: break-word;
     box-sizing: border-box;
     /* 字形边缘描边，亮背景上也能立住 */
-    -webkit-text-stroke: .6px rgba(2,4,5,.55);
+    -webkit-text-stroke: .5px rgba(2,4,5,.5);
     paint-order: stroke fill;
   }
-  /* 文字自带的柔和暗角衬底（苹果式：不明目张胆加底框，而是让背景自然压暗） */
-  .txt::before {
-    content: '';
-    position: absolute;
-    left: 50%; top: 50%;
-    width: 190%; height: 420%;
-    transform: translate(-50%, -50%);
-    background: radial-gradient(ellipse at center,
-      rgba(3,5,6,.62) 0%, rgba(3,5,6,.44) 30%, rgba(3,5,6,.20) 55%, transparent 78%);
-    z-index: -1;
-    pointer-events: none;
-    filter: blur(10px);
-  }
+  /* 不使用大片衬底——阴影只贴着每个字形 */
   .txt.sub { top: auto; bottom: 12%; }
 
   /* progress bar */
@@ -1007,7 +997,7 @@ const APP_MODEL = {
     d.style.whiteSpace = 'pre-wrap';
     // 更强可读性：多层阴影勾勒字形
     d.style.textShadow = '0 0 2px rgba(0,0,0,.95), 0 2px 18px rgba(0,0,0,.9), 0 0 60px rgba(0,0,0,.7)';
-    d.innerHTML = opts.html.replace(/\{a\}/g, '<span style="color:' + ACCENT + ';-webkit-text-stroke:.6px rgba(2,4,5,.5);paint-order:stroke fill;text-shadow:0 0 20px rgba(127,212,193,.5),0 2px 18px rgba(0,0,0,.9);">')
+    d.innerHTML = opts.html.replace(/\{a\}/g, '<span style="color:' + ACCENT + ';-webkit-text-stroke:.5px rgba(2,4,5,.55);paint-order:stroke fill;text-shadow:0 1px 1px rgba(0,0,0,.98),0 2px 3px rgba(0,0,0,.95),0 4px 8px rgba(0,0,0,.85),0 0 18px rgba(127,212,193,.45);">')
       .replace(/\{\/a\}/g, '</span>');
     d.style.filter = 'blur(12px)';
     d.style.opacity = '0';

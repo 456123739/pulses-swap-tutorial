@@ -324,6 +324,39 @@
 
   /* ===== 顶层高斯模糊（覆盖软件窗口 / MC 窗口 / 资源管理器） ===== */
   /* 背景已做整体高斯模糊时，文字不再需要衬底/阴影 */
+  /* ===== 大字灵动：漏光扫过 + 轻微色散 =====
+     只作用于 .txt-big，幅度刻意压小（色散 ±1.1px、漏光 20-32% 透明度），
+     目的是"活的"而不是"炫技"。烫金行排除色散 —— 它是透明字形填充，
+     任何 text-shadow 都会从字里透出来（就是之前 0.84s 显黑那个坑）。 */
+  /* 扫光只在字形上走：::after 复刻同一段文字，用 background-clip:text 把光裁进字里，
+     所以它不会在背景上留下一条方块带子。 */
+  @keyframes textSweep {
+    0%   { background-position: 240% center; }
+    100% { background-position: -140% center; }
+  }
+  @keyframes heroChroma {
+    0%,100% { text-shadow: -1.1px 0 rgba(255,92,92,.50), 1.1px 0 rgba(92,208,255,.50), 0 0 54px rgba(127,212,193,.42); }
+    33%     { text-shadow: -0.4px 0 rgba(255,92,92,.40), 0.4px 0 rgba(92,208,255,.40), 0 0 46px rgba(127,212,193,.36); }
+    66%     { text-shadow:  1.1px 0 rgba(255,92,92,.50), -1.1px 0 rgba(92,208,255,.50), 0 0 58px rgba(127,212,193,.46); }
+  }
+  .txt-big:not(.txt-gold) { animation: heroChroma 4.6s ease-in-out infinite; }
+  .txt::after {
+    content: attr(data-text);
+    position: absolute; left: 0; top: 0; width: 100%; height: 100%;
+    background-image: linear-gradient(105deg,
+      transparent 42%, rgba(255,255,255,.34) 48%, rgba(216,244,255,.92) 50%,
+      rgba(255,255,255,.34) 52%, transparent 58%);
+    background-size: 260% 100%;
+    background-repeat: no-repeat;
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+    pointer-events: none; z-index: 2;
+    animation: textSweep 6.8s linear infinite;
+  }
+  .txt-big::after { animation-duration: 4.2s; }
+  /* 模糊底上扫光放慢，避免糊成一片 */
+  body.blur-top-active .txt::after { animation-duration: 7.8s; opacity: .65; }
+
   /* 烫金行同样不能有衬底：暗块会从透明字形里透出来 */
   .txt.txt-gold::before { opacity: 0 !important; }
   body.blur-top-active .txt::before { opacity: 0 !important; }
@@ -1605,6 +1638,10 @@ const APP_MODEL = {
       d.style.textShadow = 'none';
       d.classList.add('txt-gold');
     }
+    // 大字单独标记，供漏光/色散/浮动使用
+    if (opts.big) d.classList.add('txt-big');
+    // 漏光要"只扫在字上"，所以让 ::after 复刻同一段文字再做 background-clip:text
+    d.setAttribute('data-text', d.textContent);
     d.style.transform = 'translate(calc(-50% + ' + d._xOff + 'px), calc(-50% + ' + d._yOff + 'px)) scale(.9)';
     txtLayer.appendChild(d);
     // 单行自适应：放不下就等比缩小，绝不换行
@@ -2812,6 +2849,13 @@ const APP_MODEL = {
       const ph = i * 1.93;
       el.style.translate = (Math.sin(idle.t * 0.74 + ph) * 1.9).toFixed(2) + 'px ' +
                            (Math.cos(idle.t * 0.61 + ph * 1.37) * 1.5).toFixed(2) + 'px';
+    });
+    // 所有字幕都在飘：大字 3.4px、小字 1.8px，相位按索引错开，保证不是整块一起晃
+    document.querySelectorAll('.txt').forEach((el, i) => {
+      const big = el.classList.contains('txt-big');
+      const A = big ? 3.4 : 1.8, B = big ? 2.6 : 1.4, ph = i * 2.1;
+      el.style.translate = (Math.sin(idle.t * 0.55 + ph) * A).toFixed(2) + 'px ' +
+                           (Math.cos(idle.t * 0.43 + ph) * B).toFixed(2) + 'px';
     });
     if (mcEl)     mcEl.style.translate     = (_idleX() * 0.45).toFixed(2) + 'px ' + (_idleY() * 0.70).toFixed(2) + 'px';
     if (explorer) explorer.style.translate = (_idleX() * -0.40).toFixed(2) + 'px ' + (_idleY() * 0.62).toFixed(2) + 'px';

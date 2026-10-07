@@ -324,21 +324,6 @@
 
   /* ===== 顶层高斯模糊（覆盖软件窗口 / MC 窗口 / 资源管理器） ===== */
   /* 背景已做整体高斯模糊时，文字不再需要衬底/阴影 */
-  /* ===== 待机灵动 =====
-     只能用 GSAP 不碰的属性。transform 全部归 GSAP 管
-     （#mc / #explorer / .ctk-window / .txt 都在 GSAP 的 transform 里），
-     CSS 动画碰 transform 会直接覆盖掉 GSAP 的位移和居中 —— 之前就是这么错位的。
-     所以这里只用 filter: brightness() 做呼吸，幅度 10%，不可能影响布局。 */
-  @keyframes idleGlow { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.10); } }
-  #app-container .ctk-card   { animation: idleGlow 5.4s ease-in-out infinite; }
-  #app-container .ctk-card:nth-of-type(2n) { animation-duration: 6.7s; }
-  #app-container .ctk-card:nth-of-type(3n) { animation-duration: 7.6s; }
-  #app-container .ctk-panel  { animation: idleGlow 4.8s ease-in-out infinite; }
-  #app-container .ctk-button { animation: idleGlow 4.2s ease-in-out infinite; }
-  #app-container .ctk-button:nth-of-type(2n) { animation-duration: 5.3s; }
-  #mc        { animation: idleGlow 6.4s ease-in-out infinite; }
-  #explorer  { animation: idleGlow 5.9s ease-in-out infinite; }
-
   /* 烫金行同样不能有衬底：暗块会从透明字形里透出来 */
   .txt.txt-gold::before { opacity: 0 !important; }
   body.blur-top-active .txt::before { opacity: 0 !important; }

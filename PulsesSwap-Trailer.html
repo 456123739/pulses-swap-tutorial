@@ -126,6 +126,14 @@
     height: 1px; opacity: 0; will-change: opacity, transform;
   }
 
+  /* ===== 顶层高斯模糊（覆盖软件窗口 / MC 窗口 / 资源管理器） ===== */
+  #blurTop {
+    position: fixed; inset: 0; z-index: 35; pointer-events: none; opacity: 0;
+    backdrop-filter: blur(24px) saturate(1.2) brightness(.52);
+    -webkit-backdrop-filter: blur(24px) saturate(1.2) brightness(.52);
+    background: rgba(3,5,6,.26);
+  }
+
   /* ===== Minecraft Java 版窗口 ===== */
   #mc {
     position: fixed; right: 3vw; top: 50%;
@@ -215,8 +223,9 @@
 
   /* ===== 资源管理器（展示替换过程） ===== */
   #explorer {
-    position: fixed; right: 3.4vw; top: 50%; transform: translateY(-50%) translateX(40px);
-    width: 328px; z-index: 30; opacity: 0; pointer-events: none;
+    position: fixed; right: 3.4vw; bottom: 5vh;
+    width: 322px; z-index: 30; opacity: 0; pointer-events: none;
+    transform: translateX(40px);
     border-radius: 12px; overflow: hidden;
     background: rgba(250,252,252,.94);
     border: 1px solid rgba(255,255,255,.55);
@@ -240,7 +249,7 @@
     font-size: 11px; color: #9aabad; border-bottom: 1px solid rgba(224,232,234,.9);
     text-transform: uppercase; letter-spacing: 1px;
   }
-  #explorer .exp-body { padding: 6px 0; height: 300px; overflow: hidden; }
+  #explorer .exp-body { padding: 5px 0; height: 236px; overflow: hidden; }
   #explorer .exp-row {
     display: flex; align-items: center; gap: 8px; padding: 6px 13px;
     font-size: 12px; color: #2c3e3f; position: relative;
@@ -379,6 +388,7 @@
 </head>
 <body>
   <canvas id="cv"></canvas>
+  <div id="blurTop"></div>
   <div id="mc">
     <div class="mc-title">
       <span class="mc-dots"><i></i><i></i><i></i></span>
@@ -1340,6 +1350,11 @@ const APP_MODEL = {
     };
   }
 
+  // ---- 顶层高斯模糊（覆盖所有窗口） ----
+  const blurTop = document.getElementById('blurTop');
+  function blurTopOn() { gsap.to(blurTop, { opacity: 1, duration: .85, ease: 'power2.out' }); }
+  function blurTopOff() { gsap.to(blurTop, { opacity: 0, duration: .7, ease: 'power2.in' }); }
+
   // ---- Minecraft 窗口控制 ----
   const mcEl = document.getElementById('mc');
   const mcRow = [0,1,2].map(i => document.getElementById('mcRow' + i));
@@ -1357,9 +1372,12 @@ const APP_MODEL = {
     gsap.to(mcEl, { yPercent: -50, x: 60, opacity: 0, duration: .55, ease: 'power2.in' });
   }
   // 焦点切换：MC 窗口作为主角 / 退居旁侧
+  let mcFocused = true;
   function mcFocus(on) {
+    mcFocused = on;
     gsap.to(mcEl, {
-      yPercent: -50, scale: on ? 1 : .70, opacity: on ? 1 : .30,
+      yPercent: -50, x: 0, y: on ? 0 : -132, scale: on ? 1 : .62,
+      opacity: on ? 1 : .26,
       duration: .7, ease: 'power3.inOut'
     });
   }
@@ -1654,7 +1672,8 @@ const APP_MODEL = {
     gsap.set(explorer, { opacity: 0, x: 40 });
     expBody.innerHTML = ''; expRows = [];
     // 复位 MC 窗口
-    gsap.set(mcEl, { yPercent: -50, x: 60, opacity: 0, scale: 1 });
+    gsap.set(mcEl, { yPercent: -50, x: 60, opacity: 0, scale: 1, y: 0 });
+    gsap.set(blurTop, { opacity: 0 });
     mcOverlayOff();
     gsap.set(mcFill, { width: '0%' });
     mcRow.forEach(r => r.classList.remove('connected', 'sel'));
@@ -1662,129 +1681,105 @@ const APP_MODEL = {
     document.querySelectorAll('.p-grid,.p-grid-top').forEach(g => g.style.backgroundSize = '64px 64px');
     tl = gsap.timeline({ onComplete: () => { repBtn.style.opacity = '1'; } });
 
-    // ═══════════ ACT 1: 现状 — 痛点 (0-14s) ═══════════
-    // 无产品 UI，纯黑幕 + 冷灰文字 + 压迫光晕，讲"换枪包"的痛苦
-
-    // ══ 现状铺垫：多层氛围同时起势 ══
+    // ═══════════ ACT 1: 现状 — 痛点 (0-12.2s) ═══════════
     tl.add(() => { patternsOn(); chaosOn(); }, 0);
-    // 扫描线周期性掠过
-    tl.add(() => scanSweep(), 0.3);
-    tl.add(() => scanSweep(), 4.4);
-    tl.add(() => scanSweep(), 8.2);
-    tl.add(() => scanSweep(), 11.8);
-    // 同心环脉冲
-    tl.add(() => ringPulse(0.4, 3.2, 0), 0.5);
-    tl.add(() => ringPulse(0.5, 3.0, 0), 4.0);
-    tl.add(() => ringPulse(0.6, 3.0, 0), 8.0);
-    tl.add(() => ringPulse(0.7, 2.6, 0), 11.4);
-    // 网格加密 + 亮度提升（视觉越来越"满"）
-    tl.to('.p-grid', { backgroundSize: '44px 44px', duration: 9, ease: 'power1.inOut' }, 2.5);
-    tl.to('.p-grid-top', { backgroundSize: '44px 44px', duration: 9, ease: 'power1.inOut' }, 2.5);
-    tl.to('#patterns', { filter: 'brightness(1.45)', duration: 8, ease: 'power2.in' }, 6.0);
-    // 混乱图标随压力聚拢（越乱越挤）
-    tl.to(chaosItems, { scale: 1.22, duration: 9, ease: 'power1.inOut' }, 2.5);
-
-    // —— 每个痛点点燃一次故障脉冲 + 压力抬升 ——
-    tl.add(() => { glitchBurst(1); crackBurst(); pressureUp(0.30); }, 3.9);
-    tl.add(() => { glitchBurst(1.6); crackBurst(); pressureUp(0.60); }, 7.7);
-    tl.add(() => { glitchBurst(2.2); crackBurst(); pressureUp(0.92); }, 11.3);
-    // 陈述结束前最压抑的一刻
-    tl.add(() => glitchBurst(2.6), 13.4);
+    tl.add(() => scanSweep(), 0.25);
+    tl.add(() => scanSweep(), 3.7);
+    tl.add(() => scanSweep(), 7.1);
+    tl.add(() => scanSweep(), 10.1);
+    tl.add(() => ringPulse(0.4, 2.6, 0), 0.4);
+    tl.add(() => ringPulse(0.5, 2.4, 0), 3.4);
+    tl.add(() => ringPulse(0.6, 2.4, 0), 6.9);
+    tl.add(() => ringPulse(0.7, 2.2, 0), 9.9);
+    tl.to('.p-grid', { backgroundSize: '44px 44px', duration: 7, ease: 'power1.inOut' }, 2.0);
+    tl.to('.p-grid-top', { backgroundSize: '44px 44px', duration: 7, ease: 'power1.inOut' }, 2.0);
+    tl.to('#patterns', { filter: 'brightness(1.45)', duration: 6.5, ease: 'power2.in' }, 5.0);
+    tl.to(chaosItems, { scale: 1.22, duration: 7, ease: 'power1.inOut' }, 2.0);
+    tl.add(() => { glitchBurst(1); crackBurst(); pressureUp(0.30); }, 3.3);
+    tl.add(() => { glitchBurst(1.6); crackBurst(); pressureUp(0.60); }, 6.7);
+    tl.add(() => { glitchBurst(2.2); crackBurst(); pressureUp(0.92); }, 9.7);
+    tl.add(() => glitchBurst(2.6), 11.6);
 
     const p1 = makeText({ size: 30, html: '玩过 TaCZ 的都知道', color: '#cfdfe0' });
-    tl.add(() => { txtIn(p1, 1.0, 0); blurOn(); }, 0.6);
-    tl.to(cam, { scale: 0.5, tz: -400, duration: 3, ease: 'power2.out', onUpdate: applyCam, onComplete: applyCam }, 0);
-    tl.to('.aura', { opacity: .5, duration: 3, ease: 'power2.out' }, 0);
-    tl.add(() => { txtOut(p1, .6, 0); blurOff(); }, 3.2);
+    tl.add(() => { txtIn(p1, .8, 0); blurOn(); }, 0.5);
+    tl.to(cam, { scale: 0.5, tz: -400, duration: 2.4, ease: 'power2.out', onUpdate: applyCam, onComplete: applyCam }, 0);
+    tl.to('.aura', { opacity: .5, duration: 2.4, ease: 'power2.out' }, 0);
+    tl.add(() => { txtOut(p1, .5, 0); blurOff(); }, 2.8);
 
-    // 痛点 1: 手动替换
     const p2a = makeText({ size: 26, html: '手动替换枪包', color: '#e39a9a', yOffset: -60 });
     const p2b = makeText({ size: 40, html: '复制 — 粘贴 — 出错', color: '#b8c8ca', yOffset: 60 });
-    tl.add(() => { txtIn(p2a, .8, 0); }, 3.8);
-    tl.add(() => { txtIn(p2b, .8, .3); }, 4.2);
-    tl.to(cam, { rotX: 14, rotY: -8, duration: 3, ease: 'power2.inOut', onUpdate: applyCam, onComplete: applyCam }, 3.8);
-    tl.add(() => { txtOut(p2a, .5, 0); txtOut(p2b, .5, 0); }, 7.0);
+    tl.add(() => { txtIn(p2a, .7, 0); }, 3.2);
+    tl.add(() => { txtIn(p2b, .7, .25); }, 3.55);
+    tl.to(cam, { rotX: 14, rotY: -8, duration: 2.4, ease: 'power2.inOut', onUpdate: applyCam, onComplete: applyCam }, 3.2);
+    tl.add(() => { txtOut(p2a, .45, 0); txtOut(p2b, .45, 0); }, 6.2);
 
-    // 痛点 2: 版本混乱
     const p3a = makeText({ size: 26, html: '枪包版本混乱', color: '#e6cc8e', yOffset: -60 });
     const p3b = makeText({ size: 40, html: '哪个是最新？', color: '#b8c8ca', yOffset: 60 });
-    tl.add(() => { txtIn(p3a, .8, 0); }, 7.6);
-    tl.add(() => { txtIn(p3b, .8, .3); }, 8.0);
-    tl.to(cam, { rotX: 8, rotY: -16, duration: 3, ease: 'power2.inOut', onUpdate: applyCam, onComplete: applyCam }, 7.6);
-    tl.add(() => { txtOut(p3a, .5, 0); txtOut(p3b, .5, 0); }, 10.6);
+    tl.add(() => { txtIn(p3a, .7, 0); }, 6.6);
+    tl.add(() => { txtIn(p3b, .7, .25); }, 6.95);
+    tl.to(cam, { rotX: 8, rotY: -16, duration: 2.4, ease: 'power2.inOut', onUpdate: applyCam, onComplete: applyCam }, 6.6);
+    tl.add(() => { txtOut(p3a, .45, 0); txtOut(p3b, .45, 0); }, 9.2);
 
-    // 痛点 3: 服务器更新
     const p4a = makeText({ size: 26, html: '服务器更新枪包', color: '#adc2e0', yOffset: -60 });
     const p4b = makeText({ size: 40, html: '全部重下？', color: '#b8c8ca', yOffset: 60 });
-    tl.add(() => { txtIn(p4a, .8, 0); }, 11.2);
-    tl.add(() => { txtIn(p4b, .8, .3); }, 11.6);
-    tl.to(cam, { rotX: 12, rotY: 6, scale: .55, duration: 3, ease: 'power2.inOut', onUpdate: applyCam, onComplete: applyCam }, 11.2);
-    tl.add(() => { txtOut(p4a, .5, 0); txtOut(p4b, .5, 0); blurOn(); }, 13.6);
+    tl.add(() => { txtIn(p4a, .7, 0); }, 9.6);
+    tl.add(() => { txtIn(p4b, .7, .25); }, 9.95);
+    tl.to(cam, { rotX: 12, rotY: 6, scale: .55, duration: 2.4, ease: 'power2.inOut', onUpdate: applyCam, onComplete: applyCam }, 9.6);
+    tl.add(() => { txtOut(p4a, .45, 0); txtOut(p4b, .45, 0); blurOn(); }, 11.6);
 
-    // ═══════════ ACT 2: 转折 — 产品作为最佳选择登场 (14-20s) ═══════════
+    // ═══════════ ACT 2: 转折 — 最佳方案登场 (12.2-18.2s) ═══════════
+    tl.add(() => { patternsOff(); chaosOff(); }, 12.1);
+    tl.to('#patterns', { filter: 'brightness(1)', duration: 1.0, ease: 'power2.out' }, 12.1);
 
     const t0 = makeText({ big: true, size: 66, html: 'PULSES{a}SWAP{/a}', color: '#f2faf7', yOffset: 0 });
     t0.style.textShadow = '0 0 50px rgba(127,212,193,.5)';
-    // 最佳方案登场：图案淡出，窗口首次亮相
-    tl.add(() => { patternsOff(); chaosOff(); }, 13.9);
-    tl.to('#patterns', { filter: 'brightness(1)', duration: 1.2, ease: 'power2.out' }, 13.9);
-    tl.add(() => txtIn(t0, 1.0, 0), 14.2);
-    tl.to('.aura', { opacity: 1, scale: 1.4, duration: 2, ease: 'power3.out' }, 14.0);
-    // 最佳选择登场：窗口从深处冲出（首次可见）
-    tl.to(winEl, { opacity: 1, duration: 1.4, ease: 'power2.out' }, 14.2);
-    tl.to(cam, { rotX: 10, rotY: -8, scale: 0.85, tz: -60, duration: 2.2, ease: 'power4.out', onUpdate: applyCam, onComplete: applyCam }, 14.4);
-    tl.add(() => { txtOut(t0, .8, 0); blurOff(); }, 16.4);
+    tl.add(() => txtIn(t0, .9, 0), 12.6);
+    tl.to('.aura', { opacity: 1, scale: 1.4, duration: 1.6, ease: 'power3.out' }, 12.4);
+    tl.to(winEl, { opacity: 1, duration: 1.2, ease: 'power2.out' }, 12.6);
+    tl.to(cam, { rotX: 10, rotY: -8, scale: 0.85, tz: -60, duration: 1.9, ease: 'power4.out', onUpdate: applyCam, onComplete: applyCam }, 12.8);
+    tl.add(() => { txtOut(t0, .7, 0); blurOff(); }, 14.9);
 
-    // 引擎代号 — 高级感命名
     const tEng = makeText({ big: true, size: 42, html: '枪包管理引擎 {a}PULSE ENGINE{/a}', color: '#f2faf7', yOffset: -46 });
-    tEng.style.textShadow = '0 0 40px rgba(127,212,193,.3)';
-    const tEngSub = makeText({ size: 22, html: '为 Tacz 而生 — 一键切换 · 毫秒替换 · 增量同步', color: '#dcebe7', yOffset: 56 });
-    tl.add(() => { txtIn(tEng, .9, 0); blurOn(); }, 17.0);
-    tl.add(() => txtIn(tEngSub, .9, .2), 17.3);
-    // 缓慢环绕展示真实 UI
-    tl.to(cam, { rotY: 10, rotX: 6, duration: 3.4, ease: 'power2.inOut', onUpdate: applyCam, onComplete: applyCam }, 17.2);
-    tl.add(() => { txtOut(tEng, .7, 0); txtOut(tEngSub, .7, 0); blurOff(); }, 19.8);
+    tEng.style.textShadow = '0 0 40px rgba(127,212,193,.35)';
+    const tEngSub = makeText({ size: 22, html: '为 Tacz 而生 — 一键切换 · 毫秒替换 · 增量同步', color: '#c2d6d2', yOffset: 56 });
+    tl.add(() => { txtIn(tEng, .8, 0); blurOn(); }, 15.4);
+    tl.add(() => txtIn(tEngSub, .8, .18), 15.7);
+    tl.to(cam, { rotY: 10, rotX: 6, duration: 2.6, ease: 'power2.inOut', onUpdate: applyCam, onComplete: applyCam }, 15.6);
+    tl.add(() => { txtOut(tEng, .6, 0); txtOut(tEngSub, .6, 0); blurOff(); }, 18.2);
 
-    // ═══════════ ACT 3: 演示 — 引擎如何解决每个痛点 (20-44s) ═══════════
+    // ═══════════ ACT 3: 演示 (18.6-53.5s) ═══════════
 
-    // 演示 1 (对应痛点1): 拖入即就绪 — 解决手动替换
+    // 演示 1: 拖入整合包 — 一拖就绪
     const t3 = makeText({ size: 28, html: '拖入即{a}就绪{/a} — 告别手动替换', color: '#e4f0ea' });
-    tl.add(() => txtIn(t3, .9, 0), 20.4);
-    tl.to(cam, Object.assign(focusCam('pack_drop', 1.5, 6, -14, 80), { duration: 1.8, ease: 'power3.inOut', onUpdate: applyCam, onComplete: applyCam }), 20.7);
-    // —— 拖入动画：文件卡片从窗口外飞入拖入框 ——
-    // 目标位置在构建期就算好（wrect 基于布局，不受 3D 变换影响）
+    tl.add(() => txtIn(t3, .8, 0), 18.8);
+    tl.to(cam, Object.assign(focusCam('pack_drop', 1.5, 6, -14, 80), { duration: 1.6, ease: 'power3.inOut', onUpdate: applyCam, onComplete: applyCam }), 19.1);
     const _dr = wrect('pack_drop');
     const dropCX = _dr.x + _dr.w / 2, dropCY = _dr.y + _dr.h / 2;
     const ghost1 = spawnDragGhost('MyModpack');
     ghost1.style.left = (dropCX - 75) + 'px';
     ghost1.style.top  = (dropCY - 46) + 'px';
-    // 起点：窗口左上外侧，远、大、倾斜
     gsap.set(ghost1, { x: -640, y: -400, z: 90, scale: 1.55, rotation: -13, opacity: 0 });
-
-    tl.to(ghost1, { opacity: 1, duration: .32, ease: 'power2.out' }, 21.2);
-    // 两段弧线飞行：先加速冲入，再减速落位
+    tl.to(ghost1, { opacity: 1, duration: .28, ease: 'power2.out' }, 19.6);
     tl.to(ghost1, { keyframes: [
-        { x: -250, y: -170, duration: .42, ease: 'power2.out', rotation: -5 },
-        { x: 0, y: 0, duration: .58, ease: 'power3.inOut', rotation: 0, scale: 1 }
-      ] }, 21.35);
-    // 落点：高亮拖入框 + 路径变绿 + 冲击环
+        { x: -250, y: -170, duration: .38, ease: 'power2.out', rotation: -5 },
+        { x: 0, y: 0, duration: .52, ease: 'power3.inOut', rotation: 0, scale: 1 }
+      ] }, 19.75);
     tl.add(() => {
       renderer.setGuideGlow('pack_drop', true);
       renderer.setDisplayBox('pack_path_box', 'D:/Minecraft/MyModpack', ACCENT);
       dropRingAt(dropCX, dropCY);
-    }, 22.35);
-    // 卡片被"吸收"进拖入框
-    tl.to(ghost1, { scale: .55, opacity: 0, duration: .30, ease: 'power2.in' }, 22.5);
-    tl.add(() => { if (ghost1 && ghost1.parentNode) ghost1.remove(); }, 22.9);
-    tl.add(() => { renderer.setLabel('pack_status', '状态: 已加载'); renderer.setLabelColor('pack_status', ACCENT); }, 22.9);
-    tl.add(() => txtOut(t3, .6, 0), 24.8);
-    tl.add(() => renderer.setGuideGlow('pack_drop', false), 25.2);
-    tl.to(cam, { tx: 0, ty: 0, tz: -40, scale: 0.9, rotY: -6, rotX: 8, duration: 1.0, ease: 'power3.inOut', onUpdate: applyCam, onComplete: applyCam }, 24.8);
+    }, 20.65);
+    tl.to(ghost1, { scale: .55, opacity: 0, duration: .26, ease: 'power2.in' }, 20.8);
+    tl.add(() => { if (ghost1 && ghost1.parentNode) ghost1.remove(); }, 21.1);
+    tl.add(() => { renderer.setLabel('pack_status', '状态: 已加载'); renderer.setLabelColor('pack_status', ACCENT); }, 21.1);
+    tl.add(() => txtOut(t3, .55, 0), 23.0);
+    tl.add(() => renderer.setGuideGlow('pack_drop', false), 23.4);
+    tl.to(cam, { tx: 0, ty: 0, tz: -40, scale: 0.9, rotY: -6, rotX: 8, duration: .9, ease: 'power3.inOut', onUpdate: applyCam, onComplete: applyCam }, 23.0);
 
-    // 演示 2 (对应痛点2): 预设管理 — 解决版本混乱
+    // 演示 2: 预设管理 — 选中即预览
     const t4 = makeText({ size: 28, html: '预设{a}管理{/a} — 告别版本混乱', color: '#e4f0ea' });
-    tl.add(() => txtIn(t4, .9, 0), 26.0);
-    tl.to(cam, Object.assign(focusCam('preset_list', 1.35, 4, -16, 40), { duration: 1.8, ease: 'power3.inOut', onUpdate: applyCam, onComplete: applyCam }), 26.3);
+    tl.add(() => txtIn(t4, .8, 0), 23.9);
+    tl.to(cam, Object.assign(focusCam('preset_list', 1.35, 4, -16, 40), { duration: 1.6, ease: 'power3.inOut', onUpdate: applyCam, onComplete: applyCam }), 24.2);
     tl.add(() => {
       renderer.setListItems('preset_list', [
         { text: 'default', bg: 'transparent' },
@@ -1792,10 +1787,9 @@ const APP_MODEL = {
         { text: '竞技 · 高帧', bg: 'transparent' },
         { text: 'PvE 生存', bg: 'transparent' },
       ], { animate: true });
-    }, 27.6);
-    tl.add(() => renderer.selectListItem('preset_list', 1), 29.2);
-    tl.add(() => { renderer.setLabel('info_name', '预设: PVP 专用'); renderer.setLabel('info_status', '状态: 未应用'); }, 29.5);
-    // —— 选中预设后，右侧枪包列表立即展示该预设的全部枪包 ——
+    }, 25.4);
+    tl.add(() => renderer.selectListItem('preset_list', 1), 26.9);
+    tl.add(() => { renderer.setLabel('info_name', '预设: PVP 专用'); renderer.setLabel('info_status', '状态: 未应用'); }, 27.2);
     tl.add(() => {
       const T = APP_MODEL.theme;
       renderer.setButtonEnabled('btn_open_tacz', true);
@@ -1809,44 +1803,37 @@ const APP_MODEL = {
         { text: 'deagle_blaze.tar.gz',  bg: T.statusNormalBg, fg: T.statusNormal },
         { text: 'sniper_ghost.tar.gz',  bg: T.statusNormalBg, fg: T.statusNormal },
       ], { animate: true });
-    }, 29.6);
-    tl.add(() => txtOut(t4, .6, 0), 31.2);
+    }, 27.3);
+    tl.add(() => txtOut(t4, .55, 0), 28.9);
 
-    // ═══════════ 演示 3: 一键替换 + 跨服切换（核心卖点） ═══════════
-    // 分屏构图：左 = Pulses Swap，右 = Minecraft
+    // ═══ 演示 3: 一键替换 + 跨服切换（核心卖点） ═══
     const SPLIT_CAM = { scale: .64, tx: -320, ty: -6, rotX: 6, rotY: -7, rotZ: 0, tz: -40 };
     const APP_CAM   = { scale: .62, tx: -330, ty: 40,  rotX: 4, rotY: 6,  rotZ: 0, tz: -20 };
 
-    // —— ① 在 PVP 服打累了 ——
     const t5a = makeText({ size: 26, html: '在 PVP 服打腻了，想去生存服', color: '#e4f0ea', yOffset: 248 });
-    tl.add(() => txtIn(t5a, .8, 0), 31.5);
-    tl.add(() => { mcShow(); mcSetConnected(0); mcSetSelected(0); }, 31.7);
-    tl.add(() => { renderer.setButtonEnabled('btn_apply', true); }, 32.0);
-    tl.to(cam, Object.assign({}, SPLIT_CAM, { duration: 1.5, ease: 'power3.inOut', onUpdate: applyCam, onComplete: applyCam }), 31.7);
+    tl.add(() => txtIn(t5a, .75, 0), 29.6);
+    tl.add(() => { mcShow(); mcSetConnected(0); mcSetSelected(0); }, 29.8);
+    tl.add(() => { renderer.setButtonEnabled('btn_apply', true); }, 30.1);
+    tl.to(cam, Object.assign({}, SPLIT_CAM, { duration: 1.3, ease: 'power3.inOut', onUpdate: applyCam, onComplete: applyCam }), 29.8);
 
-    // —— ② 断开连接 ——
     const t5b = makeText({ size: 24, html: '先断开 — 但不能重开游戏', color: '#e4f0ea', yOffset: 248 });
-    tl.add(() => { txtOut(t5a, .5, 0); txtIn(t5b, .7, .1); mcHot(mcLeave, true); }, 33.6);
-    tl.add(() => { mcHot(mcLeave, false); mcOverlayOn('正在断开连接...'); }, 34.3);
-    tl.add(() => mcRunProgress(.7, () => {
-      mcOverlayOff(); mcSetConnected(-1); mcSetSelected(-1);
-    }), 34.4);
+    tl.add(() => { txtOut(t5a, .45, 0); txtIn(t5b, .65, .1); mcHot(mcLeave, true); }, 31.5);
+    tl.add(() => { mcHot(mcLeave, false); mcOverlayOn('正在断开连接...'); }, 32.2);
+    tl.add(() => mcRunProgress(.7, () => { mcOverlayOff(); mcSetConnected(-1); mcSetSelected(-1); }), 32.3);
 
-    // —— ③ 切到 Pulses Swap：一键替换 ——
     const t5c = makeText({ size: 26, html: '{a}一键替换{/a} — 换成生存服的枪包', color: '#e4f0ea', yOffset: 248 });
-    tl.add(() => { txtOut(t5b, .5, 0); txtIn(t5c, .8, .1); mcFocus(false); }, 35.2);
-    tl.to(cam, Object.assign({}, APP_CAM, { duration: 1.3, ease: 'power3.inOut', onUpdate: applyCam, onComplete: applyCam }), 35.2);
+    tl.add(() => { txtOut(t5b, .45, 0); txtIn(t5c, .7, .1); mcFocus(false); }, 33.1);
+    tl.to(cam, Object.assign({}, APP_CAM, { duration: 1.2, ease: 'power3.inOut', onUpdate: applyCam, onComplete: applyCam }), 33.1);
     tl.add(() => {
       renderer.show('progress', true);
       renderer.show('progress_label', true);
       renderer.setLabel('progress_label', '替换中…');
       renderer.flashButton('btn_apply');
-    }, 36.5);
-    // 资源管理器同步展示
+    }, 34.3);
     const EXP_FILES = ['shotgun_wood.tar.gz', 'pistol_iron.tar.gz', 'medic_kit.tar.gz',
                        'awp_dragon.tar.gz', 'ak47_redline.tar.gz'];
-    tl.add(() => { explorerShow(EXP_FILES); expStatus.textContent = '正在替换…'; }, 36.6);
-    tl.to({ v: 0 }, { v: 1, duration: 1.6, ease: 'power2.inOut',
+    tl.add(() => { explorerShow(EXP_FILES); expStatus.textContent = '正在替换…'; }, 34.4);
+    tl.to({ v: 0 }, { v: 1, duration: 1.5, ease: 'power2.inOut',
       onUpdate: function () {
         const p = this.targets()[0].v;
         renderer.setProgress('progress', p);
@@ -1856,64 +1843,53 @@ const APP_MODEL = {
           pot.expDone = done;
           expCount.textContent = done + '/' + EXP_FILES.length + ' 已替换';
         }
-      } }, 36.8);
+      } }, 34.6);
     tl.add(() => { renderer.setProgress('progress', 1); renderer.setButtonText('btn_apply', '已应用');
       renderer.setLabel('progress_label', '完成 · 用时 0.3s'); renderer.setLabel('info_status', '状态: 已应用');
-      expStatus.textContent = '完成 · 用时 0.3s'; expCount.textContent = '5/5 已替换'; }, 38.4);
-    tl.add(() => explorerHide(), 39.2);
-    tl.add(() => { renderer.show('progress', false); renderer.show('progress_label', false); }, 39.6);
+      expStatus.textContent = '完成 · 用时 0.3s'; expCount.textContent = '5/5 已替换'; }, 36.1);
+    tl.add(() => explorerHide(), 36.9);
+    tl.add(() => { renderer.show('progress', false); renderer.show('progress_label', false); }, 37.3);
 
-    // —— ④ 回到 Minecraft：立刻进新服 ——
     const t5d = makeText({ size: 24, html: '回到游戏 — 直接进生存服', color: '#e4f0ea', yOffset: 248 });
-    tl.add(() => { txtOut(t5c, .5, 0); txtIn(t5d, .7, .1); mcFocus(true); }, 39.6);
-    tl.to(cam, Object.assign({}, SPLIT_CAM, { duration: 1.1, ease: 'power3.inOut', onUpdate: applyCam, onComplete: applyCam }), 39.6);
-    tl.add(() => { mcSetSelected(1); mcHot(mcJoin, true); }, 40.7);
-    tl.add(() => { mcHot(mcJoin, false); mcShow(); mcOverlayOn('正在加入服务器 生存养老 · 慢节奏 ...'); }, 41.3);
-    // 极快的加载 —— 卖点就在这里
-    tl.add(() => mcRunProgress(.85, () => {
-      mcOverlayOff(); mcSetConnected(1); mcSetSelected(1);
-    }), 41.4);
+    tl.add(() => { txtOut(t5c, .45, 0); txtIn(t5d, .65, .1); mcFocus(true); }, 37.4);
+    tl.to(cam, Object.assign({}, SPLIT_CAM, { duration: 1.0, ease: 'power3.inOut', onUpdate: applyCam, onComplete: applyCam }), 37.4);
+    tl.add(() => { mcSetSelected(1); mcHot(mcJoin, true); }, 38.5);
+    tl.add(() => { mcHot(mcJoin, false); mcShow(); mcOverlayOn('正在加入服务器 生存养老 · 慢节奏 ...'); }, 39.1);
+    tl.add(() => mcRunProgress(.85, () => { mcOverlayOff(); mcSetConnected(1); mcSetSelected(1); }), 39.2);
 
-    // —— ⑤ 定格金句 ——
+    // —— ④ 定点金句：全部窗口高斯模糊 ——
     const t5e = makeText({ big: true, size: 46, html: '想去别的服玩？{a}1 秒就够了{/a}', color: '#f2faf7', yOffset: 0 });
-    tl.add(() => { txtOut(t5d, .4, 0); txtIn(t5e, .8, .15); blurOn(); }, 42.5);
-    tl.to(cam, { scale: .58, tx: -300, ty: -6, rotX: 4, rotY: -8, duration: 1.4, ease: 'power3.inOut', onUpdate: applyCam, onComplete: applyCam }, 42.5);
-    tl.add(() => { txtOut(t5e, .7, 0); blurOff(); mcHide(); }, 45.2);
+    tl.add(() => { txtOut(t5d, .4, 0); txtIn(t5e, .85, .15); blurTopOn(); }, 40.7);
+    tl.to(cam, { scale: .58, tx: -300, ty: -6, rotX: 4, rotY: -8, duration: 1.3, ease: 'power3.inOut', onUpdate: applyCam, onComplete: applyCam }, 40.7);
+    tl.add(() => { txtOut(t5e, .8, 0); blurTopOff(); mcHide(); }, 46.6);
 
-    // 演示 4: 增量同步 — 拖入更新包 + 列表刷新（解决重下问题）
+    // ═══ 演示 4: 增量同步 — 拖入更新包 + 列表刷新 ═══
     const t6 = makeText({ size: 28, html: '增量{a}同步{/a} — 更新只传变化部分', color: '#e4f0ea' });
-    tl.add(() => txtIn(t6, .9, 0), 45.9);
-    // 相机聚焦到导入区（更新包拖入的位置）
+    tl.add(() => txtIn(t6, .8, 0), 47.6);
     tl.to(cam, Object.assign(focusCam('import_drop', 1.45, 5, -12, 60),
-      { duration: 1.6, ease: 'power3.inOut', onUpdate: applyCam, onComplete: applyCam }), 46.1);
-
-    // —— 拖入 .fgcupdate 更新包 ——
+      { duration: 1.4, ease: 'power3.inOut', onUpdate: applyCam, onComplete: applyCam }), 47.8);
     const _ur = wrect('import_drop');
     const updCX = _ur.x + _ur.w / 2, updCY = _ur.y + _ur.h / 2;
     const ghost2 = spawnDragGhost('PVP_v1.0.0_upd1.fgcupdate');
     ghost2.style.left = (updCX - 75) + 'px';
     ghost2.style.top  = (updCY - 46) + 'px';
     gsap.set(ghost2, { x: 700, y: -380, z: 90, scale: 1.5, rotation: 12, opacity: 0 });
-    tl.to(ghost2, { opacity: 1, duration: .3, ease: 'power2.out' }, 46.9);
+    tl.to(ghost2, { opacity: 1, duration: .28, ease: 'power2.out' }, 48.5);
     tl.to(ghost2, { keyframes: [
-        { x: 260, y: -160, duration: .4, ease: 'power2.out', rotation: 4 },
-        { x: 0, y: 0, duration: .56, ease: 'power3.inOut', rotation: 0, scale: 1 }
-      ] }, 47.05);
-    // 落点：导入框发光 + 冲击环 + 进度提示
+        { x: 260, y: -160, duration: .36, ease: 'power2.out', rotation: 4 },
+        { x: 0, y: 0, duration: .5, ease: 'power3.inOut', rotation: 0, scale: 1 }
+      ] }, 48.65);
     tl.add(() => {
       renderer.setGuideGlow('import_drop', true);
       dropRingAt(updCX, updCY);
       renderer.show('progress', true);
       renderer.show('progress_label', true);
       renderer.setLabel('progress_label', '正在应用增量更新…');
-    }, 48.0);
-    tl.to(ghost2, { scale: .55, opacity: 0, duration: .28, ease: 'power2.in' }, 48.15);
-    tl.add(() => { if (ghost2 && ghost2.parentNode) ghost2.remove(); }, 48.45);
-    // 进度快速走完（增量包很小）
-    tl.to({ v: 0 }, { v: 1, duration: .8, ease: 'power2.inOut',
-      onUpdate: function () { renderer.setProgress('progress', this.targets()[0].v); } }, 48.3);
-
-    // —— 更新列表：应用增量后，枪包列表刷新并标出变化 ——
+    }, 49.5);
+    tl.to(ghost2, { scale: .55, opacity: 0, duration: .26, ease: 'power2.in' }, 49.65);
+    tl.add(() => { if (ghost2 && ghost2.parentNode) ghost2.remove(); }, 49.95);
+    tl.to({ v: 0 }, { v: 1, duration: .75, ease: 'power2.inOut',
+      onUpdate: function () { renderer.setProgress('progress', this.targets()[0].v); } }, 49.8);
     tl.add(() => {
       const T = APP_MODEL.theme;
       renderer.setGuideGlow('import_drop', false);
@@ -1929,8 +1905,7 @@ const APP_MODEL = {
         { text: 'vector_smg.tar.gz',    bg: T.statusAddedBg,    fg: T.statusAdded },
         { text: 'm4a1_storm2.tar.gz',   bg: T.statusModifiedBg, fg: T.statusModified },
       ], { animate: true });
-    }, 49.1);
-    // 新增/变更条目依次脉冲，强调"只更新了这几个"
+    }, 50.6);
     tl.add(() => {
       const rows = renderer.get('gunpack_list').children;
       [4, 5, 6].forEach((i, k) => {
@@ -1941,30 +1916,28 @@ const APP_MODEL = {
           { boxShadow: '0 0 0 2px rgba(127,212,193,.75)', duration: .25, delay: k * .12,
             yoyo: true, repeat: 1, ease: 'power2.out' });
       });
-    }, 49.7);
+    }, 51.2);
     const t6b = makeText({ size: 22, html: '只同步变化的部分 — 无需重下整个整合包', color: '#dcebe7', yOffset: 54 });
-    tl.add(() => txtIn(t6b, .8, 0), 49.9);
-    tl.add(() => { renderer.show('progress', false); renderer.show('progress_label', false); }, 51.4);
-    // 拉远回全景
+    tl.add(() => txtIn(t6b, .75, 0), 51.3);
+    tl.add(() => { renderer.show('progress', false); renderer.show('progress_label', false); }, 52.9);
     tl.to(cam, Object.assign(focusCam('gunpack_list', 0.84, 6, 4, -40),
-      { duration: 1.6, ease: 'power3.inOut', onUpdate: applyCam, onComplete: applyCam }), 50.6);
-    tl.add(() => { txtOut(t6, .6, 0); txtOut(t6b, .6, 0); }, 51.8);
+      { duration: 1.5, ease: 'power3.inOut', onUpdate: applyCam, onComplete: applyCam }), 52.1);
+    tl.add(() => { txtOut(t6, .55, 0); txtOut(t6b, .55, 0); }, 53.3);
 
-    // ═══════════ ACT 4: 定格升华 (52-59s) ═══════════
-
+    // ═══════════ ACT 4: 定格升华 (54-61s) ═══════════
     const t7a = makeText({ big: true, size: 48, html: '{a}PULSE ENGINE{/a}', color: '#f2faf7', yOffset: -96 });
     t7a.style.textShadow = '0 0 50px rgba(127,212,193,.45)';
     const t7b = makeText({ size: 20, html: 'Tacz 枪包管理引擎 · 拖入 · 替换 · 同步', color: '#dcebe7', yOffset: -14 });
     const t7c = makeText({ size: 18, html: 'PULSES{a}0{/a} STUDIO · BETA', color: '#c2d2d4', yOffset: 46 });
-    tl.add(() => { txtIn(t7a, 1.1, 0); blurOn(); }, 52.4);
-    tl.add(() => txtIn(t7b, .9, .2), 53.0);
-    tl.to(cam, { scale: 0.4, tz: -260, rotX: 14, rotY: -8, duration: 4.4, ease: 'power3.inOut', onUpdate: applyCam, onComplete: applyCam }, 52.6);
-    tl.to(winEl, { opacity: 0.25, duration: 3.0, ease: 'power2.inOut' }, 53.0);
-    tl.add(() => txtIn(t7c, .9, 0), 54.6);
-    tl.add(() => { txtOut(t7a, 1.0, 0); txtOut(t7b, 1.0, 0); txtOut(t7c, 1.0, 0); blurOff(); }, 57.6);
+    tl.add(() => { txtIn(t7a, 1.0, 0); blurOn(); }, 54.1);
+    tl.add(() => txtIn(t7b, .85, .18), 54.7);
+    tl.to(cam, { scale: 0.4, tz: -260, rotX: 14, rotY: -8, duration: 3.6, ease: 'power3.inOut', onUpdate: applyCam, onComplete: applyCam }, 54.3);
+    tl.to(winEl, { opacity: 0.25, duration: 2.6, ease: 'power2.inOut' }, 54.7);
+    tl.add(() => txtIn(t7c, .85, 0), 56.2);
+    tl.add(() => { txtOut(t7a, .9, 0); txtOut(t7b, .9, 0); txtOut(t7c, .9, 0); blurOff(); }, 59.2);
 
     // progress bar
-    tl.to(bar, { width: '100%', duration: 59, ease: 'none' }, 0);
+    tl.to(bar, { width: '100%', duration: 61, ease: 'none' }, 0);
   }
 
   repBtn.addEventListener('click', () => {

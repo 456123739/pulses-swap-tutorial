@@ -189,6 +189,15 @@
   <button id="btn-speed">1.0×</button>
 </div>
 
+<!-- 暂停指示器 -->
+<div id="pause-overlay" style="position:fixed;inset:0;z-index:9998;display:none;align-items:center;justify-content:center;pointer-events:none;">
+  <div style="width:90px;height:90px;border-radius:50%;backdrop-filter:blur(20px);background:rgba(20,24,26,.6);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 32px rgba(0,0,0,.4);">
+    <svg width="36" height="36" viewBox="0 0 24 24" fill="#fff"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+  </div>
+</div>
+<!-- 点击暂停层（透明，覆盖全屏，z-index 在 controls 之下、overlay 之上） -->
+<div id="click-pause" style="position:fixed;inset:0;z-index:55;display:none;cursor:pointer;"></div>
+
 <script>
 /* ============================================================
  * icons.js — 自绘 SVG 图标库（零 emoji，根治 ？/� 乱码）
@@ -670,17 +679,21 @@ class AnimEngine {
     this.stage = stage;
     this.r = renderer;
     this.playing = false;
+    this.paused = false;        // 暂停状态
     this.speed = 1;
     this.scenes = [];
     this.sceneIndex = -1;
     this._activeTweens = new Set();
     this.onSceneChange = null;
     this.onEnd = null;
+    this.onPauseChange = null;  // 暂停状态变化回调
     this._buildOverlay();
   }
 
-  /* ---------- 中止令牌：stop 后旧场景在下一个原语处抛错终止 ---------- */
+  /* ---------- 中止令牌 ---------- */
   _guard() { if (!this.playing) throw new SceneAbort(); }
+  /* 暂停检查：tween step 里调，暂停时阻塞 rAF 直到恢复 */
+  _checkPause() { return this.paused; }
 
   /* ---------- 覆盖层 ---------- */
   _buildOverlay() {
@@ -748,17 +761,28 @@ class AnimEngine {
     this.overlay.appendChild(this.trail);
   }
 
-  /* ---------- 补间 ---------- */
+  /* ---------- 补间（支持暂停/恢复） ---------- */
   tween(dur, fn, ease = Ease.inOut) {
     return new Promise(res => {
       const realDur = dur / this.speed;
       const finish = () => { try { fn(ease(1)); } catch (_) {} res(); };
       if (realDur <= 1) { setTimeout(finish, 0); return; }
-      const tw = { t0: performance.now(), dur: realDur, fn, ease, res, dead: false };
+      const tw = { t0: performance.now(), dur: realDur, fn, ease, res, dead: false, pausedAt: null, pauseOffset: 0 };
       this._activeTweens.add(tw);
       const step = now => {
         if (tw.dead) { this._activeTweens.delete(tw); res(); return; }
-        const p = Math.min(1, (now - tw.t0) / tw.dur);
+        // 暂停时：记录暂停时刻，不再推进，等恢复
+        if (this.paused) {
+          if (tw.pausedAt === null) tw.pausedAt = now;
+          requestAnimationFrame(step);
+          return;
+        }
+        // 恢复时：累加暂停时长到 t0
+        if (tw.pausedAt !== null) {
+          tw.pauseOffset += now - tw.pausedAt;
+          tw.pausedAt = null;
+        }
+        const p = Math.min(1, (now - tw.t0 - tw.pauseOffset) / tw.dur);
         fn(tw.ease(p));
         if (p < 1) requestAnimationFrame(step);
         else { this._activeTweens.delete(tw); res(); }
@@ -767,6 +791,25 @@ class AnimEngine {
     });
   }
   wait(ms) { return this.tween(ms, () => {}, Ease.linear); }
+
+  /* ---------- 暂停/恢复 ---------- */
+  pause() {
+    if (!this.playing || this.paused) return;
+    this.paused = true;
+    // 暂停所有 WAAPI 动画
+    this.overlay.querySelectorAll('*').forEach(n => n.getAnimations && n.getAnimations().forEach(a => a.pause()));
+    document.querySelectorAll('.ctk-w').forEach(n => n.getAnimations && n.getAnimations().forEach(a => a.pause()));
+    if (this.onPauseChange) this.onPauseChange(true);
+  }
+  resume() {
+    if (!this.paused) return;
+    this.paused = false;
+    // 恢复所有 WAAPI 动画
+    this.overlay.querySelectorAll('*').forEach(n => n.getAnimations && n.getAnimations().forEach(a => a.play()));
+    document.querySelectorAll('.ctk-w').forEach(n => n.getAnimations && n.getAnimations().forEach(a => a.play()));
+    if (this.onPauseChange) this.onPauseChange(false);
+  }
+  togglePause() { this.paused ? this.resume() : this.pause(); }
 
   /* ---------- 坐标：视口 ---------- */
   _targetXY(id) {
@@ -2470,6 +2513,7 @@ function r_setColor(e, id, color) { e.r.setLabelColor(id, color); }
       { opacity: 0, transform: 'scale(1.05) translateY(-16px)', filter: 'blur(6px)' }
     ], { duration: 350, easing: 'cubic-bezier(.5,0,.75,0)', fill: 'forwards' });
     document.getElementById('controls').style.display = 'flex';
+    document.getElementById('click-pause').style.display = 'block';
     await new Promise(r => setTimeout(r, 350));
     intro.style.display = 'none';
     // 窗口先入场（await 等完成），再开始播放
@@ -2477,6 +2521,20 @@ function r_setColor(e, id, color) { e.r.setLabelColor(id, color); }
     await engine.windowIn(win);
     engine.playFrom(0);
   };
+
+  // 点击屏幕暂停/恢复（无缝衔接）
+  const pauseOverlay = document.getElementById('pause-overlay');
+  const clickPause = document.getElementById('click-pause');
+  engine.onPauseChange = (isPaused) => {
+    pauseOverlay.style.display = isPaused ? 'flex' : 'none';
+  };
+  clickPause.onclick = (ev) => {
+    // 点到底部控制条的按钮时不触发暂停
+    if (ev.target.closest('#controls')) return;
+    if (!engine.playing) return;
+    engine.togglePause();
+  };
+
   document.getElementById('btn-full').onclick = () => jumpTo(0);
   document.getElementById('btn-replay').onclick = () => jumpTo(Math.max(0, engine.sceneIndex));
   document.getElementById('btn-speed').onclick = e2 => {

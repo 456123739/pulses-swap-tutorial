@@ -2398,19 +2398,16 @@ function r_setColor(e, id, color) { e.r.setLabelColor(id, color); }
   let win = renderer.render();
   win.style.opacity = '0';
 
-  // 自适应缩放：用 zoom 代替 transform:scale（zoom 重新布局，文字矢量清晰不模糊）
+  // 自适应缩放：transform:scale 不改 CSS 布局（不溢出），配合字体平滑保持清晰
   function fitStage() {
     const pad = 30;
     const availW = innerWidth - pad, availH = innerHeight - 96;
     const s = Math.min(1.15, availW / APP_MODEL.window.width, availH / APP_MODEL.window.height);
-    // 优先用 zoom（Chrome/Edge/Safari 支持，文字不模糊）
-    stageClip.style.zoom = String(s);
-    // Firefox 不支持 zoom 时回退到 transform scale
-    if (getComputedStyle(stageClip).zoom === 'normal' || getComputedStyle(stageClip).zoom === '') {
-      stageClip.style.zoom = '';
-      stageClip.style.transform = `scale(${s})`;
-      stageClip.style.transformOrigin = 'center center';
-    }
+    stageClip.style.transform = `scale(${s})`;
+    stageClip.style.transformOrigin = 'center center';
+    stageClip.style.webkitFontSmoothing = 'antialiased';
+    stageClip.style.textRendering = 'optimizeLegibility';
+    stageClip.style.backfaceVisibility = 'hidden';
   }
   fitStage();
   addEventListener('resize', fitStage);

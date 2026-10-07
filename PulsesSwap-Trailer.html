@@ -347,26 +347,17 @@
     /* 影子挂在字上（静态），入场只动 opacity/位移 —— 不再逐帧重算 filter。
        影子是每个字自己投的，随字浮现而生长 —— 所以影子永远不会早于字出现。
 
-       ── 要"深晕影"，不要"描边" ──
-       描边（-webkit-text-stroke + paint-order）虽然能读，但每个字都被一圈等宽的
-       黑边箍住，字形变硬、像贴纸，近白的细字尤其廉价。所以整条去掉。
-
-       改成把"晕影"本身叠深：同一层 text-shadow 写多次，alpha 相乘累积。
-       0 0 3px @.95 叠 4 次 → 紧贴笔画处约 1-(1-.475)^4 ≈ 92% 黑，但边缘是高斯衰减，
-       不是硬边。这就是"很深的柔影"而不是"描边"。
-       外层 8px / 18px / 40px / 80px 负责让过渡自然，避免出现一圈生硬的暗环。
-
-       实测：白玻璃面板上的白字（46.5s 那句最狠）用这组读得清，
-       暗底上也不会糊成一团黑云。 */
+       ── 不要"描边"，也不要"贴边硬影" ──
+       多层同半径叠加（0 0 3px 叠四次）虽然把 alpha 堆到 ~92%，但贴边处几乎立刻饱和，
+       观感就是每个字被一圈等宽黑边箍住 —— 还是描边，只是换了个写法。
+       这里只保留真正"柔"的几层：模糊半径从 7px 起，全部带向下的偏移，
+       让影子落在字的**后下方**而不是四周，视觉上像投影，不像描边。
+       压住白玻璃面板的活儿交给 .txt::before 那片宽暗场（见下）。 */
     text-shadow:
-      0 0 3px  rgba(0,0,0,.95), 0 0 3px  rgba(0,0,0,.95),
-      0 0 3px  rgba(0,0,0,.95), 0 0 3px  rgba(0,0,0,.95),
-      0 0 8px  rgba(0,0,0,.90), 0 0 8px  rgba(0,0,0,.90),
-      0 0 8px  rgba(0,0,0,.90),
-      0 0 18px rgba(0,0,0,.80), 0 0 18px rgba(0,0,0,.80),
-      0 3px 14px rgba(0,0,0,.85),
-      0 0 40px rgba(0,0,0,.60),
-      0 0 80px rgba(0,0,0,.40);
+      0 2px 7px  rgba(0,0,0,.55),
+      0 4px 16px rgba(0,0,0,.75),
+      0 8px 34px rgba(0,0,0,.75),
+      0 0 70px   rgba(0,0,0,.55);
     will-change: transform, opacity;
   }
 
@@ -674,16 +665,32 @@
     paint-order: normal;
   }
   /* 一片柔和暗底：面积收紧，仅覆盖文字周围一小圈 */
+  /* 字幕衬底：一片很宽、很柔的暗场，铺在文字**背后**。
+     ── 为什么是它，而不是描边 ──
+     描边（-webkit-text-stroke，或多层贴边硬影）会沿每个笔画箍一圈等宽黑边，
+     字一多就读成"糊了一圈黑框"，很廉价。所以那两条路都废掉。
+     这里改成低频暗场：径向渐变、五段衰减、边缘完全化开，字本身一个像素都不碰。
+     白玻璃面板被压下去，但字形边缘干干净净。
+
+     尺寸按 .txt 自身的盒子算（300% × 620%），所以 26px 小字幕和 64px 大字
+     自动得到成比例的暗场，不用分两套。
+
+     强度由 --scrim 驱动（见 txtIn/txtOut）：它和逐字浮现同时开始、稍微滞后收尾，
+     所以永远不会出现"先黑一块、再把字摆上去"。
+     烫金行和结尾高斯模糊段仍由下面两条 !important 规则彻底关掉。 */
   .txt::before {
     content: '';
     position: absolute;
     left: 50%; top: 50%;
-    /* 整块衬底已移除：它会在字还没浮现完时先整块到位，
-       看起来就是"先出现一块黑，再把字摆上去"。
-       阴影改由每个字自己投（.ch 的 drop-shadow），跟着字的浮现同步生长。 */
-    display: none;
-    width: 0; height: 0;
-    background: none;
+    width: 300%; height: 620%;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(closest-side,
+      rgba(0,0,0,.72) 0%,
+      rgba(0,0,0,.62) 34%,
+      rgba(0,0,0,.40) 58%,
+      rgba(0,0,0,.16) 79%,
+      rgba(0,0,0,0) 100%);
+    opacity: var(--scrim, 0);
     z-index: -1;
     pointer-events: none;
   }
@@ -1737,6 +1744,7 @@ const APP_MODEL = {
     }
     // 漏光要"只扫在字上"，所以让 ::after 复刻同一段文字再做 background-clip:text
     d.setAttribute('data-text', d.textContent);
+    d.style.setProperty('--scrim', '0');   // 衬底跟着字一起长出来，不预设
     d.style.transform = 'translate(calc(-50% + ' + d._xOff + 'px), calc(-50% + ' + d._yOff + 'px)) scale(.9)';
     txtLayer.appendChild(d);
     // 单行自适应：放不下就等比缩小，绝不换行
@@ -2390,6 +2398,18 @@ const APP_MODEL = {
   function blurOn() { gsap.to(blurOverlay, { opacity: 1, duration: .6, ease: 'appleSoft' }); }
   function blurOff() { gsap.to(blurOverlay, { opacity: 0, duration: .6, ease: 'appleIn' }); }
 
+  // 衬底强度：用代理对象补间，再写回 CSS 变量。
+  // 不直接 tween '--scrim' 是因为自定义属性没有注册 @property 时，
+  // 各家浏览器对插值的处理不一致；代理对象 + onUpdate 是稳的。
+  function scrimTo(el, v, dur, delay) {
+    const cur = parseFloat(el.style.getPropertyValue('--scrim'));
+    const o = { v: isNaN(cur) ? 0 : cur };
+    gsap.to(o, {
+      v: v, duration: dur, delay: delay || 0, ease: 'appleOut',
+      onUpdate: () => el.style.setProperty('--scrim', o.v),
+    });
+  }
+
   function txtIn(el, dur, delay) {
     dur = dur || 1.1; delay = delay || 0;
     const chars = el._chars;
@@ -2400,24 +2420,34 @@ const APP_MODEL = {
       duration: dur, ease: 'appleSpring', delay: delay,
     };
     if (chars && chars.length) {
-      // 逐字：从下方 62% 处带模糊浮上来，影子同时从"无"长到"实"。
-      // 影子和字在同一个 tween、同一个 stagger 里 —— 所以永远是字投下影，
-      // 不会出现"先有一块黑底，再把字摆上去"。
-      // 只动 opacity + 位移（都是合成器友好的属性）；影子由 .ch 的静态 text-shadow 承担，
-      // 字的透明度从 0 到 1，影子自然跟着一起浮现 —— 效果一样但不逐帧重算 filter。
+      // 逐字：从下方 62% 处带模糊浮上来。
+      //
+      // 衬底（.txt::before）不能用"固定 delay + 固定时长"去跟 —— 实测过：
+      // 字还没冒头，暗场已经铺到 45%，又变成"先黑一块再把字摆上去"。
+      // 所以直接读逐字 tween 的 progress()，衬底强度 = 它的实际进度。
+      // 这样衬底在数学上不可能跑到字前面，无论 dur/delay/stagger 怎么变。
       gsap.set(chars, { opacity: 0, yPercent: 62 });
-      gsap.to(el, Object.assign(base, {
-        onStart: () => gsap.to(chars, {
-          opacity: 1, yPercent: 0,
-          duration: dur * 0.85, delay: delay,
-          ease: 'appleOut', stagger: Math.min(0.045, dur * 0.05),
-        }),
-      }));
+      let charTween = null;
+      const paint = () => {
+        const p = charTween ? charTween.progress() : 0;
+        el.style.setProperty('--scrim', String(p));
+      };
+      gsap.to(el, Object.assign(base, { onStart: paint }));
+      charTween = gsap.to(chars, {
+        opacity: 1, yPercent: 0,
+        duration: dur * 0.85, delay: delay,
+        ease: 'appleOut', stagger: Math.min(0.045, dur * 0.05),
+        onUpdate: paint, onComplete: () => el.style.setProperty('--scrim', '1'),
+      });
     } else {
       gsap.to(el, base);
+      scrimTo(el, 1, dur * 0.9, delay);
     }
   }
   function txtOut(el, dur, delay) {
+    // 衬底是 .txt 的子层，会跟着父层 opacity 一起淡出，这里只要把它归零，
+    // 免得同一个元素被复用时残留。
+    el.style.setProperty('--scrim', '0');
     gsap.to(el, { filter: 'blur(8px)', opacity: 0, scale: 1.05,
       xPercent: -50, yPercent: -50, x: (el._xOff || 0), y: (el._yOff || 0) - 14,
       duration: dur || .8, ease: 'appleIn', delay: delay || 0 });

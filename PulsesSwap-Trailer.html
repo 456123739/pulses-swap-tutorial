@@ -630,12 +630,19 @@
     content: '';
     position: absolute;
     left: 50%; top: 50%;
-    /* 逐字幕衬底已废弃。
-       它是大面积色块，压在亮色软件窗口上就是一坨灰黑涂抹 —— 而且每行字幕一坨。
-       对比度改由"整帧均匀压暗"(#dim) 承担：均匀、不露形、可读性一样够。 */
-    display: none;
-    width: 0; height: 0;
-    background: none;
+    /* 贴住文字外框的柔边黑底。
+       关键是尺寸 —— 之前 128%×250% 铺成一大块，压在亮色 UI 上就是一坨灰黑涂抹，
+       把正在演示的界面也盖住了。现在收到 108%×152%，只比文字外框大一点点，
+       四周再柔化出去，所以它不会挡到文字以外的 UI。 */
+    width: 108%; height: 152%;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(ellipse at center,
+      rgba(2,4,5,.80) 0%,
+      rgba(2,4,5,.68) 40%,
+      rgba(2,4,5,.34) 66%,
+      rgba(2,4,5,.08) 82%,
+      transparent 94%);
+    filter: blur(9px);
     z-index: -1;
     pointer-events: none;
   }
@@ -1598,7 +1605,10 @@ const APP_MODEL = {
     //   0 0 3px 那种贴边暗圈会吃掉笔画，近白的字会被读成暗色（颜色丢失的元凶）；
     //   大半径低透明度的柔光只是把字形周围的底压下去，字色本身完全不变。
     // 这是浅色字幕压在亮色 UI 上唯一既保色又保可读的做法。
-    d.style.textShadow = '0 1px 16px rgba(0,0,0,.72), 0 0 44px rgba(0,0,0,.50)';
+    // 沿字形轮廓扩散的黑色柔影 —— 贴着笔画走，所以永远不会盖到文字以外的 UI。
+    //   半径太小(3px)会吃掉笔画、让亮字显脏；半径太大(16/44px)又散得压不暗白底。
+    //   8px 主影负责在白底上撑出对比，20px 副影负责过渡自然。
+    d.style.textShadow = '0 2px 8px rgba(0,0,0,.92), 0 0 20px rgba(0,0,0,.72)';
     d.innerHTML = opts.html.replace(/\{a\}/g, '<span style="color:' + ACCENT + ';">')
       .replace(/\{\/a\}/g, '</span>');
     d.style.filter = 'blur(12px)';

@@ -2402,24 +2402,27 @@ const APP_MODEL = {
 
     // —— 一段一个问题：四次 hook 重复，一段一个痛点 ——
     // —— ① 手动替换（第 1 段 1.64 → 4.92）——
-    const p1a = makeText({ size: 26, html: '手动替换枪包', color: '#e39a9a', yOffset: -60 });
-    const p1b = makeText({ size: 40, html: '复制 — 粘贴 — 出错', color: '#b8c8ca', yOffset: 60 });
+    // 排版一：小字压在大字正上方，整体略偏上（编辑部式紧凑堆叠）
+    const p1a = makeText({ size: 26, html: '手动替换枪包', color: '#e39a9a', yOffset: -112 });
+    const p1b = makeText({ size: 42, html: '复制 — 粘贴 — 出错', color: '#b8c8ca', yOffset: 18 });
     tl.add(() => txtIn(p1a, .48, 0), H1);
     tl.add(() => txtIn(p1b, .48, .16), H1 + .24);
     tl.to(cam, { rotX: 14, rotY: -8, duration: 2.6, ease: 'appleSoft', onUpdate: applyCam, onComplete: applyCam }, H1);
     tl.add(() => { txtOut(p1a, .34, 0); txtOut(p1b, .34, 0); }, H2 - .12);
 
     // —— ② 版本混乱（第 2 段 4.92 → 8.20）——
-    const p2a = makeText({ size: 26, html: '枪包版本混乱', color: '#e6cc8e', yOffset: -60 });
-    const p2b = makeText({ size: 40, html: '哪个才是最新？', color: '#b8c8ca', yOffset: 60 });
+    // 排版二：斜向错位 —— 小字左下、大字右上，打破居中的重复感
+    const p2a = makeText({ size: 25, html: '枪包版本混乱', color: '#e6cc8e', yOffset: 96, xOffset: -300 });
+    const p2b = makeText({ size: 44, html: '哪个才是最新？', color: '#b8c8ca', yOffset: -34, xOffset: 96 });
     tl.add(() => txtIn(p2a, .48, 0), H2);
     tl.add(() => txtIn(p2b, .48, .16), H2 + .24);
     tl.to(cam, { rotX: 8, rotY: -16, duration: 2.6, ease: 'appleSoft', onUpdate: applyCam, onComplete: applyCam }, H2);
     tl.add(() => { txtOut(p2a, .34, 0); txtOut(p2b, .34, 0); }, H3 - .12);
 
     // —— ③ 全量重下（第 3 段 8.20 → 11.47）——
-    const p3a = makeText({ size: 26, html: '服务器更新枪包', color: '#adc2e0', yOffset: -60 });
-    const p3b = makeText({ size: 40, html: '又要全部重下？', color: '#b8c8ca', yOffset: 60 });
+    // 排版三：大字居中偏上做主视觉，小字落到右下角做注脚
+    const p3a = makeText({ size: 24, html: '服务器更新枪包', color: '#adc2e0', yOffset: 132, xOffset: 316 });
+    const p3b = makeText({ size: 48, html: '又要全部重下？', color: '#b8c8ca', yOffset: -26, xOffset: -30 });
     tl.add(() => txtIn(p3a, .48, 0), H3);
     tl.add(() => txtIn(p3b, .48, .16), H3 + .24);
     tl.to(cam, { rotX: 12, rotY: 6, duration: 2.6, ease: 'appleSoft', onUpdate: applyCam, onComplete: applyCam }, H3);
@@ -2689,7 +2692,19 @@ const APP_MODEL = {
     tl.add(() => txtIn(t8a, .6, 0), BEATP(113));
     tl.to(cam, Object.assign(focusCam('preset_card', 1.40, 5, -10, 60),
       { duration: 1.3, ease: 'appleOut', onUpdate: applyCam, onComplete: applyCam }), BEATP(113));
-    tl.add(() => renderer.flashButton('btn_export'), BEATP(117));
+    // 点「导出」：按钮闪 + 日志栏跟着反应 + 弹出资源管理器（此时包里还没有成品）
+    tl.add(() => {
+      renderer.flashButton('btn_export');
+      renderer.appendLog('log_box', '[12:06:02] 导出预设「PVP 竞技」...', '#9fd6c9');
+      explorerShow(['tacz', 'mods', 'config']);
+    }, BEATP(117));
+    tl.add(() => renderer.appendLog('log_box', '  打包 12 个枪包 → 压缩中', '#e6cc8e'), BEATP(119));
+    // 导出完成：导出包出现在资源管理器里，并高亮它
+    tl.add(() => {
+      renderer.appendLog('log_box', '  导出完成 · 12.4 MB', '#7fd4c1');
+      explorerShow(['tacz', 'mods', 'config', 'PVP 竞技.fgcpack']);
+      setTimeout(() => explorerHit(3), 420);
+    }, BEATP(121));
     const t8b = makeText({ size: 24, html: '发给队友 — 他拖进来就能用', color: '#c2d6d2', yOffset: 66 });
     tl.add(() => txtIn(t8b, .55, 0), BEATP(121));
     tl.add(() => { txtOut(t8a, .45, 0); txtOut(t8b, .45, .1); }, BEATP(125) - .2);
@@ -2796,9 +2811,12 @@ const APP_MODEL = {
     tl.add(() => txtIn(t10a, .6, 0), BEATP(161));
     tl.to(cam, Object.assign(focusCam('preset_card', 1.30, 6, 10, 50),
       { duration: 1.3, ease: 'appleOut', onUpdate: applyCam, onComplete: applyCam }), BEATP(161));
-    tl.add(() => renderer.selectListItem('preset_list', 1), BEATP(165));
-    tl.add(() => renderer.selectListItem('preset_list', 2), BEATP(169));
-    tl.add(() => renderer.selectListItem('preset_list', 3), BEATP(173));
+    // 枪包预设换到第 1 项 → 服务器列表的选中项同步跟着走（一枪包对一服）
+    tl.add(() => { renderer.selectListItem('preset_list', 1); mcSetSelected(1); mcSetConnected(1); }, BEATP(165));
+    // 枪包预设换到第 2 项 → 服务器列表的选中项同步跟着走（一枪包对一服）
+    tl.add(() => { renderer.selectListItem('preset_list', 2); mcSetSelected(2); mcSetConnected(2); }, BEATP(169));
+    // 枪包预设换到第 3 项 → 服务器列表的选中项同步跟着走（一枪包对一服）
+    tl.add(() => { renderer.selectListItem('preset_list', 3); mcSetSelected(3); mcSetConnected(3); }, BEATP(173));
     const t10b = makeText({ size: 26, html: '一个工具，所有服务器', color: '#c2d6d2', yOffset: 62 });
     tl.add(() => txtIn(t10b, .55, 0), BEATP(173) + .2);
     tl.add(() => { txtOut(t10a, .45, 0); txtOut(t10b, .45, .1); mcHide(); }, BEATP(185) - .2);

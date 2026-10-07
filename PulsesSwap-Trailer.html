@@ -1496,6 +1496,27 @@ const APP_MODEL = {
 (function () {
   'use strict';
 
+  // 离线渲染模式：整个 IIFE 都要用到，所以放在最前面
+  const RENDER_MODE = /[?&]render=1/.test(location.search);
+  let renderT = 0;                    // 渲染时钟（秒），渲染模式下唯一的时间来源
+
+  // 慢放系数（?slow=4）：录制时整片放慢 N 倍，抓帧压力降 N 倍。
+  // 画面本来就锁在音频时钟上，放慢音频 = 整条时间轴等比例放慢，音画关系不变。
+  const SLOW = (() => {
+    const m = location.search.match(/[?&]slow=(\d+)/);
+    return m ? Math.max(1, Math.min(16, parseInt(m[1], 10))) : 1;
+  })();
+
+  if (RENDER_MODE) {
+    // 全片唯一的随机源（漂浮图标的布局、粒子分布）都走 Math.random。
+    // 换成定种子 PRNG，渲染两次才能逐像素一致 —— 这是离线渲染可复现的前提。
+    let _seed = 20261007;
+    Math.random = () => {
+      _seed = (_seed * 1103515245 + 12345) % 2147483648;
+      return _seed / 2147483648;
+    };
+  }
+
   const ACCENT = '#7fd4c1';
   // Apple 排版栈：SF Pro Display / Text，中文回落苹方
   const SF = "'SF Pro Display','SF Pro Text','-apple-system','BlinkMacSystemFont','Helvetica Neue','Inter','PingFang SC','Microsoft YaHei UI',sans-serif";
@@ -1515,20 +1536,31 @@ const APP_MODEL = {
   }
   function initParticles() {
     particles.length = 0;
+    // 渲染模式下用固定种子，保证每次渲染的粒子分布完全一致
+    let seed = 20261007;
+    const rnd = RENDER_MODE ? () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648 : Math.random;
     for (let i = 0; i < 120; i++) {
+      const _x0 = rnd() * W, _y0 = rnd() * H;
       particles.push({
-        x: Math.random() * W, y: Math.random() * H,
-        r: Math.random() * 1.6 + 0.3,
-        vx: (Math.random() - 0.5) * 0.18,
-        vy: (Math.random() - 0.5) * 0.18,
-        a: Math.random() * 0.5 + 0.1,
+        x0: _x0, y0: _y0,
+        x: _x0, y: _y0,
+        r: rnd() * 1.6 + 0.3,
+        vx: (rnd() - 0.5) * 0.18,
+        vy: (rnd() - 0.5) * 0.18,
+        a: rnd() * 0.5 + 0.1,
       });
     }
   }
   function drawParticles() {
     ctx.clearRect(0, 0, W, H);
     for (const p of particles) {
-      p.x += p.vx; p.y += p.vy;
+      if (RENDER_MODE) {              // 位置 = 初值 + 速度×时间。幂等：同一时刻调多少次都一样
+        const f = renderT * 60;
+        p.x = ((p.x0 + p.vx * f) % W + W) % W;
+        p.y = ((p.y0 + p.vy * f) % H + H) % H;
+      } else {
+        p.x += p.vx; p.y += p.vy;
+      }
       if (p.x < -5) p.x = W + 5; if (p.x > W + 5) p.x = -5;
       if (p.y < -5) p.y = H + 5; if (p.y > H + 5) p.y = -5;
       ctx.beginPath();
@@ -2724,7 +2756,7 @@ const APP_MODEL = {
     tl.add(() => {
       renderer.appendLog('log_box', '  导出完成 · 12.4 MB', '#7fd4c1');
       explorerShow(['tacz', 'mods', 'config', 'PVP 竞技.fgcpack']);
-      setTimeout(() => explorerHit(3), 420);
+      gsap.delayedCall(0.42, () => explorerHit(3));   // 挂在时间轴上，离线渲染才可复现
     }, BEATP(121));
     const t8b = makeText({ size: 24, html: '发给队友 — 他拖进来就能用', color: '#c2d6d2', yOffset: 66 });
     tl.add(() => txtIn(t8b, .55, 0), BEATP(121));
@@ -2926,7 +2958,7 @@ const APP_MODEL = {
   const _idleTargets = () => document.querySelectorAll(
     '#app-container .ctk-card, #app-container .ctk-panel, #app-container .ctk-button');
   gsap.ticker.add(() => {
-    idle.t += gsap.ticker.deltaRatio(60) / 60;
+    if (!RENDER_MODE) idle.t += gsap.ticker.deltaRatio(60) / 60;   // 渲染模式由 __render 喂
     applyCam();                                   // 场景整体浮动
     _idleTargets().forEach((el, i) => {           // 每个控件各自呼吸，相位错开
       const ph = i * 1.93;
@@ -2990,6 +3022,25 @@ const APP_MODEL = {
   }
   function stopSync() { following = false; cancelAnimationFrame(followRaf); }
 
+  // ═══════════ 离线渲染模式 (?render=1) ═══════════
+  // 交给 CI 逐帧截图 + ffmpeg 编码成高帧率 MP4。
+  // 关键点：画面绝不能再跟真实时钟走，否则每帧相位不可复现、逐帧截出来会抖。
+  // 做法：停音频 → 暂停 GSAP 全局时间轴 → 由外部逐帧喂时间。
+  // 注意：txtIn/txtOut 是独立 tween（不在 tl 里），只 seek tl 不会重现它们；
+  //       必须 seek 全局时间轴，才能把所有 tween（含独立 tween）一起定位。
+  if (RENDER_MODE) {
+    const st = document.createElement('style');
+    st.textContent = '*{animation:none !important;transition:none !important;}';   // 移除而非暂停：暂停相位仍取决于墙钟
+    document.head.appendChild(st);
+    window.__render = (t) => {
+      renderT = t;
+      idle.t = t;                     // 待机灵动也由渲染时钟驱动
+      drawParticles();                // 粒子按渲染时钟重算位置
+      gsap.globalTimeline.time(t);    // 全局时间轴（含独立 tween）一起定位
+    };
+    window.__renderInfo = { duration: 96.6, fps: 60, width: 1920, height: 1080 };
+  }
+
   // 播放（用户手势触发，符合浏览器自动播放策略）
   // 时间轴等音频真正开始后再启动 → 画面与第31拍人声天然锁死
   let showStarted = false;
@@ -3003,14 +3054,21 @@ const APP_MODEL = {
       if (window.__tl) return;         // 防重复启动
       try { bgm.currentTime = 0; } catch (e) {}   // 音频与时间轴同时归零 → 锚点锁死
       build();
-      startSync();
+      if (RENDER_MODE) {
+        tl.paused(false);              // 交回给全局时间轴驱动
+        gsap.globalTimeline.pause();   // 冻结全局时钟，改由 __render(t) 逐帧喂
+        gateEl.classList.add('off');
+        muteBtn.classList.remove('on');
+      } else {
+        startSync();
+      }
     };
     let kicked = false;
     const kick = () => { if (kicked) return; kicked = true; go(); };
     try {
       bgm.currentTime = 0;
       bgm.volume = 0.92;
-      bgm.playbackRate = 1;
+      bgm.playbackRate = 1 / SLOW;      // 录制时整片放慢
       const pr = bgm.play();
       if (pr && pr.then) pr.then(kick, () => { console.warn('[BGM] 播放被阻止，改为无声播放'); kick(); });
       else kick();

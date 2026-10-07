@@ -2639,8 +2639,14 @@ const APP_MODEL = {
     tl.add(() => renderer.setGuideGlow('pack_drop', false), BEATP(54));
 
     // —— 预设管理：此刻正在 PVP 服里，PVP 预设自然「已应用」(b56) ——
-    const SPLIT_CAM = { scale: .64, tx: -320, ty: -6, rotX: 6, rotY: -7, rotZ: 0, tz: -40 };
-    const APP_CAM   = { scale: .62, tx: -330, ty: 40,  rotX: 4, rotY: 6,  rotZ: 0, tz: -20 };
+    // 双面板同框时的取景。基准是 1600×900 设计空间，实测（含 rotX/rotY 的透视收缩）：
+    //   scale .64 → 软件窗实测 709×488，右边缘 853；MC 窗 430×357，左边缘 1124。
+    //   中间空了 271px —— 主角反而比配角小，这就是"swap 面板缩得太小"的来源。
+    // 现在软件窗抬到 .78（实测约 864 宽），MC 保持 1.0 满尺寸不动，
+    // 两者之间仍留 ~123px 呼吸位，不重叠、不裁边。
+    const SPLIT_CAM = { scale: .78, tx: -250, ty: -6, rotX: 6, rotY: -7, rotZ: 0, tz: -40 };
+    // MC 退到旁侧（mcFocus(false) → .82）时空间更宽裕，软件窗再让一点。
+    const APP_CAM   = { scale: .78, tx: -260, ty: 34, rotX: 4, rotY: 6,  rotZ: 0, tz: -20 };
     const T = APP_MODEL.theme;
 
     const t4 = makeText({ size: 27, html: '每套枪包 = 一个{a}预设{/a}', color: '#e4f0ea', yOffset: 248 });

@@ -62,8 +62,10 @@
     left: 50%; top: 50%;
     transform: translate(-50%, -50%) scale(.9);
     will-change: filter, opacity, transform;
-    text-shadow: 0 2px 30px rgba(0,0,0,.5);
+    text-shadow: 0 0 2px rgba(0,0,0,.95), 0 2px 18px rgba(0,0,0,.9), 0 0 60px rgba(0,0,0,.7);
     user-select: none;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
   .txt.sub { top: auto; bottom: 12%; }
 
@@ -906,18 +908,22 @@ const APP_MODEL = {
     const d = document.createElement('div');
     d.className = 'txt ' + (opts.cls || '');
     d.style.fontFamily = opts.big ? TITLE_FONT : SUB_FONT;
-    d.style.fontWeight = opts.big ? '300' : '200';
+    d.style.fontWeight = opts.big ? '500' : '400';
     d.style.letterSpacing = (opts.big ? 8 : 3) + 'px';
     d.style.fontSize = (opts.size || (opts.big ? 64 : 26)) + 'px';
     d.style.color = opts.color || '#eaf4f1';
     d.style.textAlign = 'center';
     d.style.lineHeight = opts.big ? '1.05' : '1.4';
     d.style.whiteSpace = 'pre-wrap';
-    d.innerHTML = opts.html.replace(/\{a\}/g, '<span style="color:' + ACCENT + ';">')
+    // 更强可读性：多层阴影勾勒字形
+    d.style.textShadow = '0 0 2px rgba(0,0,0,.95), 0 2px 18px rgba(0,0,0,.9), 0 0 60px rgba(0,0,0,.7)';
+    d.innerHTML = opts.html.replace(/\{a\}/g, '<span style="color:' + ACCENT + ';text-shadow:0 0 20px rgba(127,212,193,.55),0 2px 18px rgba(0,0,0,.9);">')
       .replace(/\{\/a\}/g, '</span>');
     d.style.filter = 'blur(12px)';
     d.style.opacity = '0';
-    d.style.transform = 'translate(-50%,-50%) scale(.9)';
+    // yOffset: 垂直偏移，避免多行文字重叠
+    d._yOff = (opts.yOffset || 0);
+    d.style.transform = 'translate(-50%, calc(-50% + ' + d._yOff + 'px)) scale(.9)';
     txtLayer.appendChild(d);
     return d;
   }
@@ -949,11 +955,13 @@ const APP_MODEL = {
   function blurOff() { gsap.to(blurOverlay, { opacity: 0, duration: .6, ease: 'power2.in' }); }
 
   function txtIn(el, dur, delay) {
-    gsap.to(el, { filter: 'blur(0px)', opacity: 1, scale: 1, xPercent: -50, yPercent: -50,
+    gsap.to(el, { filter: 'blur(0px)', opacity: 1, scale: 1,
+      xPercent: -50, yPercent: -50, y: (el._yOff || 0),
       duration: dur || 1.1, ease: 'power3.out', delay: delay || 0 });
   }
   function txtOut(el, dur, delay) {
-    gsap.to(el, { filter: 'blur(8px)', opacity: 0, scale: 1.05, xPercent: -50, yPercent: -50,
+    gsap.to(el, { filter: 'blur(8px)', opacity: 0, scale: 1.05,
+      xPercent: -50, yPercent: -50, y: (el._yOff || 0) - 14,
       duration: dur || .8, ease: 'power3.in', delay: delay || 0 });
   }
 
@@ -980,24 +988,24 @@ const APP_MODEL = {
     tl.add(() => { txtOut(p1, .6, 0); blurOff(); }, 3.2);
 
     // 痛点 1: 手动替换
-    const p2a = makeText({ size: 26, html: '手动替换枪包', color: '#c97b7b' });
-    const p2b = makeText({ size: 40, html: '复制 — 粘贴 — 出错', color: '#6a7d80' });
+    const p2a = makeText({ size: 26, html: '手动替换枪包', color: '#d98c8c', yOffset: -60 });
+    const p2b = makeText({ size: 40, html: '复制 — 粘贴 — 出错', color: '#9aa9ac', yOffset: 60 });
     tl.add(() => { txtIn(p2a, .8, 0); }, 3.8);
     tl.add(() => { txtIn(p2b, .8, .3); }, 4.2);
     tl.to(cam, { rotX: 14, rotY: -8, duration: 3, ease: 'power2.inOut', onUpdate: applyCam, onComplete: applyCam }, 3.8);
     tl.add(() => { txtOut(p2a, .5, 0); txtOut(p2b, .5, 0); }, 7.0);
 
     // 痛点 2: 版本混乱
-    const p3a = makeText({ size: 26, html: '枪包版本混乱', color: '#c9a961' });
-    const p3b = makeText({ size: 40, html: '哪个是最新？', color: '#6a7d80' });
+    const p3a = makeText({ size: 26, html: '枪包版本混乱', color: '#d9bd7c', yOffset: -60 });
+    const p3b = makeText({ size: 40, html: '哪个是最新？', color: '#9aa9ac', yOffset: 60 });
     tl.add(() => { txtIn(p3a, .8, 0); }, 7.6);
     tl.add(() => { txtIn(p3b, .8, .3); }, 8.0);
     tl.to(cam, { rotX: 8, rotY: -16, duration: 3, ease: 'power2.inOut', onUpdate: applyCam, onComplete: applyCam }, 7.6);
     tl.add(() => { txtOut(p3a, .5, 0); txtOut(p3b, .5, 0); }, 10.6);
 
     // 痛点 3: 服务器更新
-    const p4a = makeText({ size: 26, html: '服务器更新枪包', color: '#7b9dc9' });
-    const p4b = makeText({ size: 40, html: '全部重下？', color: '#6a7d80' });
+    const p4a = makeText({ size: 26, html: '服务器更新枪包', color: '#9db4d6', yOffset: -60 });
+    const p4b = makeText({ size: 40, html: '全部重下？', color: '#9aa9ac', yOffset: 60 });
     tl.add(() => { txtIn(p4a, .8, 0); }, 11.2);
     tl.add(() => { txtIn(p4b, .8, .3); }, 11.6);
     tl.to(cam, { rotX: 12, rotY: 6, scale: .55, duration: 3, ease: 'power2.inOut', onUpdate: applyCam, onComplete: applyCam }, 11.2);
@@ -1005,7 +1013,7 @@ const APP_MODEL = {
 
     // ═══════════ ACT 2: 转折 — 产品作为最佳选择登场 (14-20s) ═══════════
 
-    const t0 = makeText({ big: true, size: 76, html: 'PULSES{a}SWAP{/a}', color: '#eaf4f1' });
+    const t0 = makeText({ big: true, size: 76, html: 'PULSES{a}SWAP{/a}', color: '#f2faf7', yOffset: 0 });
     t0.style.textShadow = '0 0 50px rgba(127,212,193,.5)';
     tl.add(() => txtIn(t0, 1.0, 0), 14.2);
     tl.to('.aura', { opacity: 1, scale: 1.4, duration: 2, ease: 'power3.out' }, 14.0);
@@ -1014,9 +1022,9 @@ const APP_MODEL = {
     tl.add(() => { txtOut(t0, .8, 0); blurOff(); }, 16.4);
 
     // 引擎代号 — 高级感命名
-    const tEng = makeText({ big: true, size: 42, html: '枪包管理引擎 {a}PULSE ENGINE{/a}', color: '#eaf4f1' });
+    const tEng = makeText({ big: true, size: 42, html: '枪包管理引擎 {a}PULSE ENGINE{/a}', color: '#f2faf7', yOffset: -46 });
     tEng.style.textShadow = '0 0 40px rgba(127,212,193,.3)';
-    const tEngSub = makeText({ size: 22, html: '为 Tacz 而生 — 一键切换 · 毫秒替换 · 增量同步', color: '#9bb8b2' });
+    const tEngSub = makeText({ size: 22, html: '为 Tacz 而生 — 一键切换 · 毫秒替换 · 增量同步', color: '#c2d6d2', yOffset: 56 });
     tl.add(() => { txtIn(tEng, .9, 0); blurOn(); }, 17.0);
     tl.add(() => txtIn(tEngSub, .9, .2), 17.3);
     // 缓慢环绕展示真实 UI
@@ -1030,7 +1038,7 @@ const APP_MODEL = {
     tl.add(() => txtIn(t3, .9, 0), 20.4);
     tl.to(cam, { rotY: -14, rotX: 6, scale: 1.5, tz: 80, tx: 250, ty: -150, duration: 1.8, ease: 'power3.inOut', onUpdate: applyCam, onComplete: applyCam }, 20.7);
     tl.add(() => { renderer.setGuideGlow('pack_drop', true); renderer.setDisplayBox('pack_path_box', 'D:/Minecraft/MyModpack', ACCENT); }, 22.0);
-    tl.add(() => { renderer.setLabel('pack_status', '状态: 已加载 ✓'); renderer.setLabelColor('pack_status', ACCENT); }, 22.6);
+    tl.add(() => { renderer.setLabel('pack_status', '状态: 已加载'); renderer.setLabelColor('pack_status', ACCENT); }, 22.6);
     tl.add(() => txtOut(t3, .6, 0), 24.8);
     tl.add(() => renderer.setGuideGlow('pack_drop', false), 25.2);
     tl.to(cam, { tx: 0, ty: 0, tz: -40, scale: 0.9, rotY: -6, rotX: 8, duration: 1.0, ease: 'power3.inOut', onUpdate: applyCam, onComplete: applyCam }, 24.8);
@@ -1063,7 +1071,7 @@ const APP_MODEL = {
     tl.add(() => renderer.flashButton('btn_apply'), 34.0);
     tl.add(() => renderer.setLabel('progress_label', '替换中…'), 34.2);
     tl.to({ v: 0 }, { v: 1, duration: 2.2, ease: 'power2.inOut', onUpdate: function () { renderer.setProgress('progress', this.targets()[0].v); } }, 34.4);
-    tl.add(() => { renderer.setProgress('progress', 1); renderer.setButtonText('btn_apply', '已应用 ✓'); renderer.setLabel('progress_label', '完成'); renderer.setLabel('info_status', '状态: 已应用 ✓'); }, 36.7);
+    tl.add(() => { renderer.setProgress('progress', 1); renderer.setButtonText('btn_apply', '已应用'); renderer.setLabel('progress_label', '完成'); renderer.setLabel('info_status', '状态: 已应用'); }, 36.7);
     tl.add(() => txtOut(t5, .6, 0), 37.0);
 
     // 演示 4: 增量同步 + 实时校验（解决重下问题）
@@ -1076,27 +1084,27 @@ const APP_MODEL = {
       renderer.setButtonEnabled('btn_open_tacz', true);
       renderer.setButtonEnabled('btn_refresh_gun', true);
       renderer.setListItems('gunpack_list', [
-        { text: '✓ modern_warfare_2.tar.gz', bg: T.statusNormalBg, fg: T.statusNormal },
-        { text: '✓ create_armament.tar.gz',  bg: T.statusNormalBg, fg: T.statusNormal },
-        { text: '⚡ timeless_and_classics.tar.gz', bg: T.statusModifiedBg, fg: T.statusModified },
-        { text: '✓ dabob_guns.tar.gz',      bg: T.statusNormalBg, fg: T.statusNormal },
-        { text: '＋ additional_guns.tar.gz', bg: T.statusAddedBg,  fg: T.statusAdded },
-        { text: '⚡ cgm_guns_pack.tar.gz',   bg: T.statusModifiedBg, fg: T.statusModified },
-        { text: '✓ heroxine_guns.tar.gz',   bg: T.statusNormalBg, fg: T.statusNormal },
-        { text: '＋ victoriss_guns.tar.gz',  bg: T.statusAddedBg,  fg: T.statusAdded },
+        { text: 'modern_warfare_2.tar.gz', bg: T.statusNormalBg, fg: T.statusNormal },
+        { text: 'create_armament.tar.gz',  bg: T.statusNormalBg, fg: T.statusNormal },
+        { text: 'timeless_and_classics.tar.gz', bg: T.statusModifiedBg, fg: T.statusModified },
+        { text: 'dabob_guns.tar.gz',      bg: T.statusNormalBg, fg: T.statusNormal },
+        { text: 'additional_guns.tar.gz', bg: T.statusAddedBg,  fg: T.statusAdded },
+        { text: 'cgm_guns_pack.tar.gz',   bg: T.statusModifiedBg, fg: T.statusModified },
+        { text: 'heroxine_guns.tar.gz',   bg: T.statusNormalBg, fg: T.statusNormal },
+        { text: 'victoriss_guns.tar.gz',  bg: T.statusAddedBg,  fg: T.statusAdded },
       ], { animate: true });
     }, 39.2);
-    const t6b = makeText({ size: 22, html: '✓ 正常  ＋ 新增  ⚡ 变更 — 实时校验', color: '#9bb8b2' });
+    const t6b = makeText({ size: 22, html: '正常 · 新增 · 变更 — 实时校验', color: '#c2d6d2', yOffset: 54 });
     tl.add(() => txtIn(t6b, .8, 0), 40.4);
     tl.to(cam, { rotY: 6, rotX: 6, scale: 0.82, duration: 3.0, ease: 'power2.inOut', onUpdate: applyCam, onComplete: applyCam }, 39.5);
     tl.add(() => { txtOut(t6, .6, 0); txtOut(t6b, .6, 0); }, 42.6);
 
     // ═══════════ ACT 4: 定格升华 (43-50s) ═══════════
 
-    const t7a = makeText({ big: true, size: 54, html: '{a}PULSE ENGINE{/a}', color: '#eaf4f1' });
+    const t7a = makeText({ big: true, size: 54, html: '{a}PULSE ENGINE{/a}', color: '#f2faf7', yOffset: -96 });
     t7a.style.textShadow = '0 0 50px rgba(127,212,193,.45)';
-    const t7b = makeText({ size: 20, html: 'Tacz 枪包管理引擎 · 拖入 · 替换 · 同步', color: '#9bb8b2' });
-    const t7c = makeText({ size: 18, html: 'PULSES{a}0{/a} STUDIO · BETA', color: '#7a8f93' });
+    const t7b = makeText({ size: 20, html: 'Tacz 枪包管理引擎 · 拖入 · 替换 · 同步', color: '#c2d6d2', yOffset: -14 });
+    const t7c = makeText({ size: 18, html: 'PULSES{a}0{/a} STUDIO · BETA', color: '#a4babd', yOffset: 46 });
     tl.add(() => { txtIn(t7a, 1.1, 0); blurOn(); }, 43.2);
     tl.add(() => txtIn(t7b, .9, .2), 43.8);
     tl.to(cam, { scale: 0.4, tz: -260, rotX: 14, rotY: -8, duration: 4.4, ease: 'power3.inOut', onUpdate: applyCam, onComplete: applyCam }, 43.4);

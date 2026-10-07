@@ -5,6 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Pulses Swap — Cinematic Trailer</title>
 <style>
+  /* 等比舞台：片子按 1600x900 设计，整体缩放到视口 —— 2K/4K 全屏下占屏比例不变。
+     #stage 带 transform，所以它内部的 position:fixed 会相对它定位（这正是我们要的）。 */
+  #stage {
+    position: fixed; left: 50%; top: 50%;
+    width: 1600px; height: 900px;
+    transform: translate(-50%, -50%) scale(var(--stage-k, 1));
+    transform-origin: center center;
+  }
   html, body {
     margin: 0; padding: 0; width: 100%; height: 100%;
     background: #030506; overflow: hidden;
@@ -289,17 +297,19 @@
     -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
   }
   /* 胶片噪点 */
+  /* 胶片颗粒。两条硬约束：
+     ① 绝不逐帧跳动。旧写法是 animation: steps(2)/.28s —— 每秒抖 7 次，
+        观感就是电视机雪花（"为什么有电视机的雪花效果"就是这个）。
+        现在完全静止：颗粒属于"胶片"，不属于"静电"。
+     ② 颗粒必须和屏幕像素 1:1。#noise 在 #stage 里，会被 stage-k 整体放大；
+        2K 下 240px 的 tile 被拉到 384px → 颗粒又粗又糊（"感觉很糊"的元凶）。
+        所以 tile 尺寸除以 stage-k，让它在任何分辨率下都落在原生像素上。
+     峰值不透明度另由 chaosOn() 控制，保持很轻。 */
   #noise {
     position: fixed; inset: -20%; z-index: 1; pointer-events: none; opacity: 0;
     mix-blend-mode: overlay;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.42'/%3E%3C/svg%3E");
-    animation: noiseShift .28s steps(2) infinite;
-  }
-  @keyframes noiseShift {
-    0%   { transform: translate(0,0); }
-    33%  { transform: translate(-2%,1%); }
-    66%  { transform: translate(1%,-2%); }
-    100% { transform: translate(0,0); }
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.28'/%3E%3C/svg%3E");
+    background-size: calc(240px / var(--stage-k, 1)) calc(240px / var(--stage-k, 1));
   }
   /* 压迫暗角 */
   #vig {
@@ -334,10 +344,33 @@
      高级感改由文字自身的运动承担（逐字错峰浮现 + 持续浮动）。 */
   .ch {
     display: inline-block;
-    /* 影子挂在字上（静态），入场只动 opacity/位移 —— 不再逐帧重算 filter */
-    text-shadow: 0 3px 8px rgba(0,0,0,.92), 0 0 18px rgba(0,0,0,.70);
+    /* 影子挂在字上（静态），入场只动 opacity/位移 —— 不再逐帧重算 filter。
+       影子是每个字自己投的，随字浮现而生长 —— 所以影子永远不会早于字出现。
+
+       ── 为什么不能用"大半径柔影" ──
+       旧配方是 0 3px 10px / 0 0 24px / 0 0 48px 三层柔光。柔影在字形正边缘的
+       覆盖率不到一半，而且第一层还带 3px 向下偏移 —— 字的**上边缘完全没有遮挡**。
+       结果就是白字压在白色玻璃面板上直接糊掉（46.5s 那句最明显，字和面板同亮度）。
+
+       ── 现在分三段 ──
+       ① 贴边硬圈：0 模糊、±1.5/±2.5px 八向。保证任何底色下字形边缘都有一圈实心黑，
+          不依赖任何高级特性，是兜底。
+       ② 近场压暗：3px / 7px。把紧贴笔画的那圈背景压下去，白底上撑出对比。
+       ③ 远场过渡：20px / 46px。避免出现"抠图贴纸"的硬边感。 */
+    text-shadow:
+      -1.5px -1.5px 0 rgba(0,0,0,.96), 1.5px -1.5px 0 rgba(0,0,0,.96),
+      -1.5px  1.5px 0 rgba(0,0,0,.96), 1.5px  1.5px 0 rgba(0,0,0,.96),
+      -2.5px  0     0 rgba(0,0,0,.88), 2.5px  0     0 rgba(0,0,0,.88),
+       0     -2.5px 0 rgba(0,0,0,.88), 0      2.5px 0 rgba(0,0,0,.88),
+       0 0 3px  rgba(0,0,0,.95),
+       0 2px 7px rgba(0,0,0,.92),
+       0 0 20px rgba(0,0,0,.82),
+       0 0 46px rgba(0,0,0,.58);
+    /* 描边先画、填充后画 → 只留下字形**外侧**那半圈，得到一条平滑均匀的黑边。
+       这是白字压白底唯一还读得清的办法。硬圈保留，用于 paint-order 不被支持时的兜底。 */
+    -webkit-text-stroke: 2px rgba(0,0,0,.85);
+    paint-order: stroke fill;
     will-change: transform, opacity;
-    /* 影子是每个字自己投的，随字浮现而生长 —— 所以影子永远不会早于字出现 */
   }
 
   /* 烫金行同样不能有衬底：暗块会从透明字形里透出来 */
@@ -362,7 +395,7 @@
   /* ===== Minecraft Java 版窗口 ===== */
   #mc {
     will-change: opacity, transform; transform: translateZ(0);
-    position: fixed; right: 3vw; top: 50%;
+    position: fixed; right: 48px; top: 50%;
     width: 430px; z-index: 32; opacity: 0; pointer-events: none;
     transform-origin: right center;
     border-radius: 6px; overflow: hidden;
@@ -512,7 +545,7 @@
   /* ===== 资源管理器（展示替换过程） ===== */
   #explorer {
     will-change: opacity, transform; transform: translateZ(0);
-    position: fixed; right: 3.4vw; bottom: 5vh;
+    position: fixed; right: 54px; bottom: 45px;
     width: 322px; z-index: 30; opacity: 0; pointer-events: none;
     transform: translateX(40px);
     border-radius: 12px; overflow: hidden;
@@ -636,10 +669,10 @@
     user-select: none;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
-    padding: 0 2vw;               /* 左右安全留白 */
+    padding: 0 32px;              /* 左右安全留白（设计基准 1600 宽） */
     white-space: nowrap;          /* 介绍时绝不换行 */
     box-sizing: border-box;
-    /* 不使用描边，靠衬底保证对比 */
+    /* 描边/阴影都挂在逐字 .ch 上（见上），父层保持干净 */
     -webkit-text-stroke: 0;
     paint-order: normal;
   }
@@ -697,7 +730,7 @@
   <div id="mc" class="lg-sheen">
     <div class="mc-title">
       <span class="mc-dots"><i></i><i></i><i></i></span>
-      <span>Minecraft 1.21.4 — Forge 47.3.0</span>
+      <span>Minecraft 1.20.1 — Forge 47.3.0</span>
     </div>
     <div class="mc-body">
       <div class="mc-head">选择服务器</div>
@@ -706,7 +739,7 @@
         <div class="mc-ico"></div>
         <div class="mc-info">
           <div class="mc-name">龙腾 · 枪战 PVP 服</div>
-          <div class="mc-motd">1.21.4 | 枪包已同步 | 欢迎</div>
+          <div class="mc-motd">1.20.1 | 枪包已同步 | 欢迎</div>
         </div>
         <div class="mc-right">
           <div class="mc-players">37/100</div>
@@ -717,7 +750,7 @@
         <div class="mc-ico"></div>
         <div class="mc-info">
           <div class="mc-name">生存养老 · 慢节奏</div>
-          <div class="mc-motd">1.21.4 | 建筑 / 探索 / 休闲</div>
+          <div class="mc-motd">1.20.1 | 建筑 / 探索 / 休闲</div>
         </div>
         <div class="mc-right">
           <div class="mc-players">12/50</div>
@@ -728,7 +761,7 @@
         <div class="mc-ico"></div>
         <div class="mc-info">
           <div class="mc-name">竞速 · 极限挑战服</div>
-          <div class="mc-motd">1.21.4 | 高难 / 排名</div>
+          <div class="mc-motd">1.20.1 | 高难 / 排名</div>
         </div>
         <div class="mc-right">
           <div class="mc-players">204/300</div>
@@ -1185,7 +1218,7 @@ class CtkRenderer {
     for (const w of d.widgets) body.appendChild(this.renderWidget({ ...w }));
     dlg.appendChild(body);
     mask.appendChild(dlg);
-    document.body.appendChild(mask);
+    STAGE.appendChild(mask);
     this._dialogEl = mask;
     requestAnimationFrame(() => { dlg.style.transform = 'scale(1) translateY(0)'; dlg.style.opacity = '1'; });
     return mask;
@@ -1228,7 +1261,7 @@ class CtkRenderer {
       }
       menu.appendChild(mi);
     });
-    document.body.appendChild(menu);
+    STAGE.appendChild(menu);
     // 边界夹紧
     const r = menu.getBoundingClientRect();
     let fx = x, fy = y;
@@ -1507,6 +1540,21 @@ const APP_MODEL = {
   'use strict';
 
   // 离线渲染模式：整个 IIFE 都要用到，所以放在最前面
+  const STAGE = (function () {
+    const st = document.createElement('div');
+    st.id = 'stage';
+    document.body.appendChild(st);
+    // 把 body 下已有的全部图层搬进舞台（canvas / mc / explorer / txt / scene ...）
+    [...document.body.children].forEach(c => { if (c !== st) st.appendChild(c); });
+    const fit = () => {
+      const k = Math.min(window.innerWidth / 1600, window.innerHeight / 900);
+      document.documentElement.style.setProperty('--stage-k', k);
+    };
+    fit();
+    window.addEventListener('resize', fit);
+    return st;
+  })();
+
   const RENDER_MODE = /[?&]render=1/.test(location.search);
   let renderT = 0;                    // 渲染时钟（秒），渲染模式下唯一的时间来源
 
@@ -1631,13 +1679,13 @@ const APP_MODEL = {
     const _hasCJK = /[\u4e00-\u9fff]/.test(opts.html);
     if (opts.gold)        d.style.letterSpacing = '0.06em';
     else if (opts.big && !_hasCJK) d.style.letterSpacing = 'min(4px, 0.3vw)';   // 拉丁大标题收紧
-    else if (opts.big)    d.style.letterSpacing = 'min(7px, 0.5vw)';
-    else if (_hasCJK)     d.style.letterSpacing = 'min(3px, 0.26vw)';
-    else                  d.style.letterSpacing = 'min(2px, 0.18vw)';
+    else if (opts.big)    d.style.letterSpacing = '7px';
+    else if (_hasCJK)     d.style.letterSpacing = '3px';
+    else                  d.style.letterSpacing = '2px';
     // 字号随视口缩放：桌面保持设计值，窄屏自动收缩，绝不溢出
     const _sz = (opts.size || (opts.big ? 64 : 26));
     const _vwCap = opts.big ? 7.2 : 4.6;
-    d.style.fontSize = 'min(' + _sz + 'px, ' + _vwCap + 'vw)';
+    d.style.fontSize = _sz + 'px';   // 不再用 vw：整体由 #stage 等比缩放
     d._baseSize = _sz;
     d.style.color = opts.color || '#eef8f4';
     d.style.textAlign = 'center';
@@ -1651,7 +1699,7 @@ const APP_MODEL = {
     // 沿字形轮廓扩散的黑色柔影 —— 贴着笔画走，所以永远不会盖到文字以外的 UI。
     //   半径太小(3px)会吃掉笔画、让亮字显脏；半径太大(16/44px)又散得压不暗白底。
     //   8px 主影负责在白底上撑出对比，20px 副影负责过渡自然。
-    d.style.textShadow = opts.gold ? '0 2px 8px rgba(0,0,0,.92), 0 0 20px rgba(0,0,0,.72)' : 'none';
+    d.style.textShadow = opts.gold ? '0 3px 10px rgba(0,0,0,1), 0 0 24px rgba(0,0,0,.92), 0 0 48px rgba(0,0,0,.55)' : 'none';
     d.innerHTML = opts.html.replace(/\{a\}/g, '<span style="color:' + ACCENT + ';">')
       .replace(/\{\/a\}/g, '</span>');
     d.style.filter = 'blur(12px)';
@@ -1890,7 +1938,7 @@ const APP_MODEL = {
       beatFlash = document.createElement('div');
       beatFlash.style.cssText = 'position:fixed;inset:0;z-index:3;pointer-events:none;' +
         'background:radial-gradient(ellipse at center, rgba(127,212,193,.11), transparent 62%);opacity:0;';
-      document.body.appendChild(beatFlash);
+      STAGE.appendChild(beatFlash);
     }
     gsap.fromTo(beatFlash, { opacity: 0 }, {
       opacity: (strength || 1) * 0.5, duration: 0.055, ease: 'appleSoft',
@@ -1952,8 +2000,10 @@ const APP_MODEL = {
   function mcFocus(on) {
     mcFocused = on;
     gsap.to(mcEl, {
-      yPercent: -50, x: 0, y: on ? 0 : -132, scale: on ? 1 : .62,
-      opacity: on ? 1 : .26,
+      // 未聚焦态原来压到 62% 尺寸 + 26% 不透明度 —— 在高分屏上基本看不清。
+      // 保留"聚焦/未聚焦"的层次，但把未聚焦态抬上来：82% 尺寸 + 55% 不透明度。
+      yPercent: -50, x: 0, y: on ? 0 : -96, scale: on ? 1 : .82,
+      opacity: on ? 1 : .55,
       duration: .7, ease: 'appleOut'
     });
   }
@@ -2283,7 +2333,7 @@ const APP_MODEL = {
       gsap.killTweensOf(c);
       gsap.fromTo(c,
         { width: 0, opacity: 0, xPercent: -50 },
-        { width: (30 + Math.random() * 70) + 'vw', opacity: .5,
+        { width: (480 + Math.random() * 1120) + 'px', opacity: .5,
           duration: .12 + Math.random() * .1,
           onComplete: () => { gsap.to(c, { opacity: 0, duration: .18,
             onComplete: () => { gsap.set(c, { opacity: 0 }); c.style.visibility = 'hidden'; } }); } });
@@ -2292,7 +2342,7 @@ const APP_MODEL = {
 
   function chaosOn() {
     gsap.to(chaosLayer, { opacity: 1, duration: 1.8, ease: 'appleSoft' });
-    gsap.to(noiseEl, { opacity: .55, duration: 2.2, ease: 'appleSoft' });
+    gsap.to(noiseEl, { opacity: .16, duration: 2.2, ease: 'appleSoft' });
     gsap.to(vigEl, { opacity: .55, duration: 2.4, ease: 'appleSoft' });
   }
   function chaosOff() {
@@ -2336,7 +2386,7 @@ const APP_MODEL = {
   dimOverlay.id = 'dim';
   dimOverlay.style.cssText =
     'position:fixed;inset:0;z-index:38;pointer-events:none;opacity:0;background:rgba(3,5,6,.60);';
-  document.body.appendChild(dimOverlay);
+  STAGE.appendChild(dimOverlay);
   function dimOn()  { gsap.to(dimOverlay, { opacity: 1, duration: .7, ease: 'appleSoft' }); }
   function dimOff() { gsap.to(dimOverlay, { opacity: 0, duration: .6, ease: 'appleIn' }); }
 
@@ -2924,7 +2974,9 @@ const APP_MODEL = {
     // 收尾顺序：先一句哲学化总结把调性拉起来，再落署名。
     // 署名内部也有次序 —— 软件名 → 工作室 → 版本号。
     const tPhi = makeText({ size: 31, html: '最好的工具，是让人忘记它的存在', color: '#eaf4f1' });
-    tl.add(() => { txtIn(tPhi, .9, 0); blurOn(); }, 88.0);
+    // 结尾必须保留真高斯模糊来营造高级感 —— 用 #blurTop（带 backdrop-filter），
+    // 不是被我去掉模糊的 #blur。半径已降到 13px，视觉在、开销可控。
+    tl.add(() => { txtIn(tPhi, .9, 0); blurTopOn(); }, 88.0);
     tl.add(() => txtOut(tPhi, .6, 0), 91.05);
 
     const t7a = makeText({ big: true, size: 50, html: 'PULSES {a}SWAP{/a}', color: '#f2faf7', yOffset: -74 });
@@ -2939,7 +2991,7 @@ const APP_MODEL = {
     tl.to(winEl, { opacity: 0, duration: 1.8, ease: 'appleIn' }, 88.9);
     // 三行同时在场、一起退场，收在音乐淡出的空隙里
     // 注意：全片结束前都不要解除 blur-top-active，否则退场中的字幕后面会闪回那团黑
-    tl.add(() => { txtOut(t7a, .7, 0); txtOut(t7b, .7, .08); txtOut(t7c, .7, .16); blurOff(); }, 95.90);
+    tl.add(() => { txtOut(t7a, .7, 0); txtOut(t7b, .7, .08); txtOut(t7c, .7, .16); blurTopOff(); }, 95.90);
     tl.to(cam, { scale: 0.34, tz: -420, duration: 1.3, ease: 'appleSoft', onUpdate: applyCam, onComplete: applyCam }, 95.40);
 
     // ═══ 脉冲打在真实鼓点上（起音表驱动） ═══

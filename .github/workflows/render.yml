@@ -1,0 +1,79 @@
+name: render
+
+# 把宣传片渲染成高清 MP4，挂到 Release 上。
+# 手动触发（workflow_dispatch），也可在推 v* tag 时自动跑。
+on:
+  workflow_dispatch:
+    inputs:
+      slow:
+        description: "慢放倍数（越大越不容易卡帧，耗时也越长）"
+        default: "4"
+      fps:
+        description: "输出帧率"
+        default: "60"
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  render:
+    # 用 Windows runner：字体渲染与最终观众环境一致，中文不会缺字
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: 安装依赖
+        run: |
+          npm init -y
+          npm install playwright@1.47.2 --no-audit --no-fund
+          npx playwright install chromium
+
+      - name: 抽出内嵌背景音乐
+        run: node tools/extract_audio.js PulsesSwap-Trailer.html audio.mp3
+
+      - name: 渲染帧序列（慢放实拍 + CDP screencast）
+        shell: bash
+        run: |
+          node tools/capture.js PulsesSwap-Trailer.html frames ${{ github.event.inputs.slow || 4 }} 1920 1080
+          cat frames/meta.json
+
+      - name: 校验帧数与时长
+        shell: bash
+        run: |
+          node -e "
+          const m=require('./frames/meta.json');
+          console.log('帧数',m.frames,' 动画跨度',m.animationSpanSec.toFixed(2),'s  正常结束',m.completed);
+          if(!m.completed) { console.error('片子没有播完，拒绝出片'); process.exit(1); }
+          if(m.frames < 600) { console.error('帧数过少，说明渲染太慢，请调大 slow'); process.exit(1); }
+          "
+
+      - name: ffmpeg 编码 + 混流
+        shell: bash
+        run: |
+          FPS=${{ github.event.inputs.fps || 60 }}
+          mkdir -p out
+          ffmpeg -y -f concat -safe 0 -i frames/list.txt \
+            -vsync cfr -r $FPS -pix_fmt yuv420p -c:v libx264 -preset slow -crf 16 \
+            -movflags +faststart -an out/video.mp4
+          ffmpeg -y -i out/video.mp4 -i audio.mp3 \
+            -c:v copy -c:a aac -b:a 192k -shortest -movflags +faststart \
+            out/PulsesSwap-Trailer.mp4
+          ls -la out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PulsesSwap-Trailer-MP4
+          path: out/PulsesSwap-Trailer.mp4
+          if-no-files-found: error
+
+      - name: 挂到 Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: out/PulsesSwap-Trailer.mp4

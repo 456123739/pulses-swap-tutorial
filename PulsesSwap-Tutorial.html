@@ -2355,13 +2355,19 @@ function r_setColor(e, id, color) { e.r.setLabelColor(id, color); }
   let win = renderer.render();
   win.style.opacity = '0';
 
-  // 自适应缩放：只缩放 stage（transform），stage 内部逻辑坐标不变
+  // 自适应缩放：用 zoom 代替 transform:scale（zoom 重新布局，文字矢量清晰不模糊）
   function fitStage() {
     const pad = 30;
     const availW = innerWidth - pad, availH = innerHeight - 96;
     const s = Math.min(1.15, availW / APP_MODEL.window.width, availH / APP_MODEL.window.height);
-    stageClip.style.transform = `scale(${s})`;
-    stageClip.style.transformOrigin = 'center center';
+    // 优先用 zoom（Chrome/Edge/Safari 支持，文字不模糊）
+    stageClip.style.zoom = String(s);
+    // Firefox 不支持 zoom 时回退到 transform scale
+    if (getComputedStyle(stageClip).zoom === 'normal' || getComputedStyle(stageClip).zoom === '') {
+      stageClip.style.zoom = '';
+      stageClip.style.transform = `scale(${s})`;
+      stageClip.style.transformOrigin = 'center center';
+    }
   }
   fitStage();
   addEventListener('resize', fitStage);

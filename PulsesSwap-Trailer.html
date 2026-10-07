@@ -114,7 +114,11 @@
     left: 50%; top: 50%;
     transform: translate(-50%, -50%) scale(.9);
     will-change: filter, opacity, transform;
-    text-shadow: 0 0 2px rgba(0,0,0,.95), 0 2px 18px rgba(0,0,0,.9), 0 0 60px rgba(0,0,0,.7);
+    text-shadow:
+      0 0 3px rgba(0,0,0,.98),
+      0 0 9px rgba(0,0,0,.92),
+      0 2px 22px rgba(0,0,0,.88),
+      0 0 60px rgba(0,0,0,.6);
     user-select: none;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
@@ -123,6 +127,22 @@
     white-space: normal;          /* 过长自动换行 */
     overflow-wrap: break-word;
     box-sizing: border-box;
+    /* 字形边缘描边，亮背景上也能立住 */
+    -webkit-text-stroke: .6px rgba(2,4,5,.55);
+    paint-order: stroke fill;
+  }
+  /* 文字自带的柔和暗角衬底（苹果式：不明目张胆加底框，而是让背景自然压暗） */
+  .txt::before {
+    content: '';
+    position: absolute;
+    left: 50%; top: 50%;
+    width: 190%; height: 420%;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(ellipse at center,
+      rgba(3,5,6,.62) 0%, rgba(3,5,6,.44) 30%, rgba(3,5,6,.20) 55%, transparent 78%);
+    z-index: -1;
+    pointer-events: none;
+    filter: blur(10px);
   }
   .txt.sub { top: auto; bottom: 12%; }
 
@@ -981,13 +1001,13 @@ const APP_MODEL = {
     const _sz = (opts.size || (opts.big ? 64 : 26));
     const _vwCap = opts.big ? 7.2 : 4.6;
     d.style.fontSize = 'min(' + _sz + 'px, ' + _vwCap + 'vw)';
-    d.style.color = opts.color || '#eaf4f1';
+    d.style.color = opts.color || '#d5e6e1';
     d.style.textAlign = 'center';
     d.style.lineHeight = opts.big ? '1.05' : '1.4';
     d.style.whiteSpace = 'pre-wrap';
     // 更强可读性：多层阴影勾勒字形
     d.style.textShadow = '0 0 2px rgba(0,0,0,.95), 0 2px 18px rgba(0,0,0,.9), 0 0 60px rgba(0,0,0,.7)';
-    d.innerHTML = opts.html.replace(/\{a\}/g, '<span style="color:' + ACCENT + ';text-shadow:0 0 20px rgba(127,212,193,.55),0 2px 18px rgba(0,0,0,.9);">')
+    d.innerHTML = opts.html.replace(/\{a\}/g, '<span style="color:' + ACCENT + ';-webkit-text-stroke:.6px rgba(2,4,5,.5);paint-order:stroke fill;text-shadow:0 0 20px rgba(127,212,193,.5),0 2px 18px rgba(0,0,0,.9);">')
       .replace(/\{\/a\}/g, '</span>');
     d.style.filter = 'blur(12px)';
     d.style.opacity = '0';
@@ -1115,7 +1135,7 @@ const APP_MODEL = {
     tl.to('.p-grid-top', { backgroundSize: '48px 48px', duration: 7, ease: 'power1.inOut' }, 3.5);
     tl.to('#patterns', { filter: 'brightness(1.35)', duration: 6, ease: 'power2.in' }, 7.5);
 
-    const p1 = makeText({ size: 30, html: '玩过 TaCZ 的都知道', color: '#b6c6c8' });
+    const p1 = makeText({ size: 30, html: '玩过 TaCZ 的都知道', color: '#a8babc' });
     tl.add(() => { txtIn(p1, 1.0, 0); blurOn(); }, 0.6);
     tl.to(cam, { scale: 0.5, tz: -400, duration: 3, ease: 'power2.out', onUpdate: applyCam, onComplete: applyCam }, 0);
     tl.to('.aura', { opacity: .5, duration: 3, ease: 'power2.out' }, 0);
@@ -1123,7 +1143,7 @@ const APP_MODEL = {
 
     // 痛点 1: 手动替换
     const p2a = makeText({ size: 26, html: '手动替换枪包', color: '#d98c8c', yOffset: -60 });
-    const p2b = makeText({ size: 40, html: '复制 — 粘贴 — 出错', color: '#9aa9ac', yOffset: 60 });
+    const p2b = makeText({ size: 40, html: '复制 — 粘贴 — 出错', color: '#93a2a5', yOffset: 60 });
     tl.add(() => { txtIn(p2a, .8, 0); }, 3.8);
     tl.add(() => { txtIn(p2b, .8, .3); }, 4.2);
     tl.to(cam, { rotX: 14, rotY: -8, duration: 3, ease: 'power2.inOut', onUpdate: applyCam, onComplete: applyCam }, 3.8);
@@ -1131,7 +1151,7 @@ const APP_MODEL = {
 
     // 痛点 2: 版本混乱
     const p3a = makeText({ size: 26, html: '枪包版本混乱', color: '#d9bd7c', yOffset: -60 });
-    const p3b = makeText({ size: 40, html: '哪个是最新？', color: '#9aa9ac', yOffset: 60 });
+    const p3b = makeText({ size: 40, html: '哪个是最新？', color: '#93a2a5', yOffset: 60 });
     tl.add(() => { txtIn(p3a, .8, 0); }, 7.6);
     tl.add(() => { txtIn(p3b, .8, .3); }, 8.0);
     tl.to(cam, { rotX: 8, rotY: -16, duration: 3, ease: 'power2.inOut', onUpdate: applyCam, onComplete: applyCam }, 7.6);
@@ -1139,7 +1159,7 @@ const APP_MODEL = {
 
     // 痛点 3: 服务器更新
     const p4a = makeText({ size: 26, html: '服务器更新枪包', color: '#9db4d6', yOffset: -60 });
-    const p4b = makeText({ size: 40, html: '全部重下？', color: '#9aa9ac', yOffset: 60 });
+    const p4b = makeText({ size: 40, html: '全部重下？', color: '#93a2a5', yOffset: 60 });
     tl.add(() => { txtIn(p4a, .8, 0); }, 11.2);
     tl.add(() => { txtIn(p4b, .8, .3); }, 11.6);
     tl.to(cam, { rotX: 12, rotY: 6, scale: .55, duration: 3, ease: 'power2.inOut', onUpdate: applyCam, onComplete: applyCam }, 11.2);
@@ -1147,7 +1167,7 @@ const APP_MODEL = {
 
     // ═══════════ ACT 2: 转折 — 产品作为最佳选择登场 (14-20s) ═══════════
 
-    const t0 = makeText({ big: true, size: 66, html: 'PULSES{a}SWAP{/a}', color: '#f2faf7', yOffset: 0 });
+    const t0 = makeText({ big: true, size: 66, html: 'PULSES{a}SWAP{/a}', color: '#d9e8e3', yOffset: 0 });
     t0.style.textShadow = '0 0 50px rgba(127,212,193,.5)';
     // 最佳方案登场：图案淡出，窗口首次亮相
     tl.add(() => patternsOff(), 13.9);
@@ -1160,9 +1180,9 @@ const APP_MODEL = {
     tl.add(() => { txtOut(t0, .8, 0); blurOff(); }, 16.4);
 
     // 引擎代号 — 高级感命名
-    const tEng = makeText({ big: true, size: 42, html: '枪包管理引擎 {a}PULSE ENGINE{/a}', color: '#f2faf7', yOffset: -46 });
+    const tEng = makeText({ big: true, size: 42, html: '枪包管理引擎 {a}PULSE ENGINE{/a}', color: '#d9e8e3', yOffset: -46 });
     tEng.style.textShadow = '0 0 40px rgba(127,212,193,.3)';
-    const tEngSub = makeText({ size: 22, html: '为 Tacz 而生 — 一键切换 · 毫秒替换 · 增量同步', color: '#c2d6d2', yOffset: 56 });
+    const tEngSub = makeText({ size: 22, html: '为 Tacz 而生 — 一键切换 · 毫秒替换 · 增量同步', color: '#b3c9c5', yOffset: 56 });
     tl.add(() => { txtIn(tEng, .9, 0); blurOn(); }, 17.0);
     tl.add(() => txtIn(tEngSub, .9, .2), 17.3);
     // 缓慢环绕展示真实 UI
@@ -1232,17 +1252,17 @@ const APP_MODEL = {
         { text: 'victoriss_guns.tar.gz',  bg: T.statusAddedBg,  fg: T.statusAdded },
       ], { animate: true });
     }, 39.2);
-    const t6b = makeText({ size: 22, html: '正常 · 新增 · 变更 — 实时校验', color: '#c2d6d2', yOffset: 54 });
+    const t6b = makeText({ size: 22, html: '正常 · 新增 · 变更 — 实时校验', color: '#b3c9c5', yOffset: 54 });
     tl.add(() => txtIn(t6b, .8, 0), 40.4);
     tl.to(cam, { rotY: 6, rotX: 6, scale: 0.82, duration: 3.0, ease: 'power2.inOut', onUpdate: applyCam, onComplete: applyCam }, 39.5);
     tl.add(() => { txtOut(t6, .6, 0); txtOut(t6b, .6, 0); }, 42.6);
 
     // ═══════════ ACT 4: 定格升华 (43-50s) ═══════════
 
-    const t7a = makeText({ big: true, size: 48, html: '{a}PULSE ENGINE{/a}', color: '#f2faf7', yOffset: -96 });
+    const t7a = makeText({ big: true, size: 48, html: '{a}PULSE ENGINE{/a}', color: '#d9e8e3', yOffset: -96 });
     t7a.style.textShadow = '0 0 50px rgba(127,212,193,.45)';
-    const t7b = makeText({ size: 20, html: 'Tacz 枪包管理引擎 · 拖入 · 替换 · 同步', color: '#c2d6d2', yOffset: -14 });
-    const t7c = makeText({ size: 18, html: 'PULSES{a}0{/a} STUDIO · BETA', color: '#a4babd', yOffset: 46 });
+    const t7b = makeText({ size: 20, html: 'Tacz 枪包管理引擎 · 拖入 · 替换 · 同步', color: '#b3c9c5', yOffset: -14 });
+    const t7c = makeText({ size: 18, html: 'PULSES{a}0{/a} STUDIO · BETA', color: '#9cb0b3', yOffset: 46 });
     tl.add(() => { txtIn(t7a, 1.1, 0); blurOn(); }, 43.2);
     tl.add(() => txtIn(t7b, .9, .2), 43.8);
     tl.to(cam, { scale: 0.4, tz: -260, rotX: 14, rotY: -8, duration: 4.4, ease: 'power3.inOut', onUpdate: applyCam, onComplete: applyCam }, 43.4);

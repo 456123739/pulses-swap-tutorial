@@ -324,6 +324,27 @@
 
   /* ===== 顶层高斯模糊（覆盖软件窗口 / MC 窗口 / 资源管理器） ===== */
   /* 背景已做整体高斯模糊时，文字不再需要衬底/阴影 */
+  /* ===== 待机灵动 =====
+     全片不允许出现"完全静止"的帧：窗口、卡片、按钮、MC 窗、字幕衬底
+     在停顿时都保持极小幅度呼吸。幅度控制在 1-3px / 0.2deg 以内，不抢戏。 */
+  @keyframes idleWin  { 0%,100% { transform: translateY(0) rotateZ(0deg); } 50% { transform: translateY(-2.6px) rotateZ(.16deg); } }
+  @keyframes idleCard { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-1.7px); } }
+  @keyframes idleGlow { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.12); } }
+  @keyframes idleVig  { 0%,100% { transform: translate(-50%,-50%) scale(1); } 50% { transform: translate(-50%,-50%) scale(1.07); } }
+  #app-container .ctk-window { animation: idleWin 6.2s ease-in-out infinite; }
+  #app-container .ctk-card   { animation: idleCard 5.4s ease-in-out infinite; }
+  #app-container .ctk-card:nth-of-type(2n) { animation-duration: 6.6s; }
+  #app-container .ctk-card:nth-of-type(3n) { animation-duration: 7.5s; }
+  #app-container .ctk-panel  { animation: idleCard 4.8s ease-in-out infinite; }
+  #app-container .ctk-button { animation: idleGlow 4.2s ease-in-out infinite; }
+  #app-container .ctk-button:nth-of-type(2n) { animation-duration: 5.3s; }
+  #mc { animation: idleWin 7.1s ease-in-out infinite; }
+  #gate .g-card { animation: idleCard 5.9s ease-in-out infinite; }
+  /* 字幕衬底轻微呼吸（不动 .txt 本体，避免和 GSAP 抢 transform） */
+  .txt::before { animation: idleVig 6.8s ease-in-out infinite; }
+
+  /* 烫金行同样不能有衬底：暗块会从透明字形里透出来 */
+  .txt.txt-gold::before { opacity: 0 !important; }
   body.blur-top-active .txt::before { opacity: 0 !important; }
   body.blur-top-active .txt { text-shadow: none !important; }
   /* 烫金字自带 drop-shadow，模糊底上同样要压掉，否则"1 秒就够了"后面一直挂着一团黑 */
@@ -1597,6 +1618,11 @@ const APP_MODEL = {
     // 烫金字：内容包一层金箔渐变
     if (opts.gold) {
       d.innerHTML = '<span class="goldfill">' + opts.html + '</span>';
+      // 烫金字用 -webkit-text-fill-color:transparent 做金箔渐变，
+      // 父层的黑色 text-shadow 会从透明字形里透出来 —— 远看就是一团黑。
+      // 所以烫金行必须清掉父层阴影，改用 .goldfill 自带的 drop-shadow。
+      d.style.textShadow = 'none';
+      d.classList.add('txt-gold');
     }
     d.style.transform = 'translate(calc(-50% + ' + d._xOff + 'px), calc(-50% + ' + d._yOff + 'px)) scale(.9)';
     txtLayer.appendChild(d);
@@ -2397,7 +2423,7 @@ const APP_MODEL = {
     tl.add(() => { if (ghost1 && ghost1.parentNode) ghost1.remove(); }, BEATP(51) + .45);
     tl.add(() => { renderer.setLabel('pack_status', '状态: 已加载'); renderer.setLabelColor('pack_status', ACCENT); }, BEATP(52));
     tl.add(() => txtOut(t3, .5, 0), BEATP(53));
-    tl.add(() => renderer.setGuideGlow('pack_drop', false), BEATP(56));
+    tl.add(() => renderer.setGuideGlow('pack_drop', false), BEATP(54));
 
     // —— 预设管理：此刻正在 PVP 服里，PVP 预设自然「已应用」(b56) ——
     const SPLIT_CAM = { scale: .64, tx: -320, ty: -6, rotX: 6, rotY: -7, rotZ: 0, tz: -40 };
@@ -2406,11 +2432,12 @@ const APP_MODEL = {
 
     const t4 = makeText({ size: 27, html: '每套枪包 = 一个{a}预设{/a}', color: '#e4f0ea', yOffset: 248 });
     tl.add(() => txtIn(t4, .65, 0), BEATP(54));   // 原来 BEATP(56)，中间空了 1.24s 太长
-    tl.add(() => { mcShow(); mcSetConnected(0); mcSetSelected(0); }, BEATP(56));
+    tl.add(() => { mcShow(); mcSetConnected(0); mcSetSelected(0); }, BEATP(54));
     tl.add(() => { renderer.setButtonEnabled('btn_open_tacz', true);
                    renderer.setButtonEnabled('btn_refresh_gun', true);
-                   renderer.setButtonEnabled('btn_export', true); }, BEATP(56));
-    tl.to(cam, Object.assign({}, SPLIT_CAM, { duration: 1.1, ease: 'appleOut', onUpdate: applyCam, onComplete: applyCam }), BEATP(56));
+                   renderer.setButtonEnabled('btn_export', true); }, BEATP(54));
+    // 字幕在 BEATP(54) 就进场了，镜头必须同一拍跟上、并且更快到位，否则字幕和画面对不上
+    tl.to(cam, Object.assign({}, SPLIT_CAM, { duration: .85, ease: 'appleOut', onUpdate: applyCam, onComplete: applyCam }), BEATP(54));
     tl.add(() => {
       renderer.setListItems('preset_list', [
         { text: 'default', bg: 'transparent' },
@@ -2418,7 +2445,7 @@ const APP_MODEL = {
         { text: '生存养老', bg: 'transparent' },
         { text: '竞技 · 高帧', bg: 'transparent' },
       ], { animate: true });
-    }, BEATP(58));
+    }, BEATP(55));
     tl.add(() => renderer.selectListItem('preset_list', 1), BEATP(60));
     tl.add(() => {
       renderer.setLabel('info_name', '预设: PVP 专用');
@@ -2600,6 +2627,32 @@ const APP_MODEL = {
     tl.add(() => txtIn(t8b, .55, 0), BEATP(121));
     tl.add(() => { txtOut(t8a, .45, 0); txtOut(t8b, .45, .1); }, BEATP(125) - .2);
 
+    // 原来这里到下一章有 5.2s 纯静止，补一段"导入别人的预设包"
+    const t8c = makeText({ size: 26, html: '别人的预设包，拖进来就能用', color: '#c2d6d2' });
+    tl.add(() => txtIn(t8c, .55, 0), BEATP(126));
+    tl.to(cam, Object.assign(focusCam('import_drop', 1.5, 6, -10, 70),
+      { duration: 1.0, ease: 'appleOut', onUpdate: applyCam, onComplete: applyCam }), BEATP(126));
+    const _ir = wrect('import_drop');
+    const impCX = _ir.x + _ir.w / 2, impCY = _ir.y + _ir.h / 2;
+    const ghost3 = spawnDragGhost('friend_preset.fgcpack');
+    ghost3.style.left = (impCX - 75) + 'px';
+    ghost3.style.top  = (impCY - 46) + 'px';
+    gsap.set(ghost3, { x: -560, y: -360, z: 90, scale: 1.5, rotation: -11, opacity: 0 });
+    tl.to(ghost3, { opacity: 1, duration: .24, ease: 'appleSoft' }, BEATP(128));
+    tl.to(ghost3, { keyframes: [
+        { x: -220, y: -150, duration: .30, ease: 'appleSoft', rotation: -4 },
+        { x: 0, y: 0, duration: .40, ease: 'appleOut', rotation: 0, scale: 1 }
+      ] }, BEATP(128) + .12);
+    tl.add(() => { renderer.setGuideGlow('import_drop', true); dropRingAt(impCX, impCY); }, BEATP(130));
+    tl.to(ghost3, { scale: .55, opacity: 0, duration: .22, ease: 'appleIn' }, BEATP(130) + .14);
+    tl.add(() => { if (ghost3 && ghost3.parentNode) ghost3.remove(); }, BEATP(130) + .42);
+    tl.add(() => {
+      renderer.setGuideGlow('import_drop', false);
+      renderer.addListItem('preset_list', { text: '队友的 PVP 预设', bg: 'transparent' });
+      renderer.setLabel('loading_label', '已导入');
+    }, BEATP(131));
+    tl.add(() => { txtOut(t8c, .5, 0); renderer.setLabel('loading_label', ''); }, BEATP(137) - .25);
+
     // —— ② 版本号 + 日志：出问题能定位 (57.0 → 66.5) ——
     const t9a = makeText({ size: 30, html: '每个预设{a}独立版本号{/a} — 不会被别的服覆盖', color: '#e4f0ea' });
     tl.add(() => {
@@ -2626,6 +2679,8 @@ const APP_MODEL = {
     tl.add(() => renderer.appendLog('log_box', '  校验 tacz/ 目录 ... OK', '#9fd6c9'), BEATP(151));
     tl.add(() => renderer.appendLog('log_box', '  比对增量：3 新增 / 1 修改', '#e6cc8e'), BEATP(153));
     tl.add(() => renderer.appendLog('log_box', '  应用完成，耗时 0.84s', '#9fd6c9'), BEATP(155));
+    tl.add(() => renderer.appendLog('log_box', '  备份原枪包 → backup/2026-10-07', '#9fd6c9'), BEATP(157));
+    tl.add(() => renderer.appendLog('log_box', '  无冲突 · 全部通过', '#7fd4c1'), BEATP(159));
     tl.add(() => txtOut(t9b, .45, 0), BEATP(161) - .2);
 
     // —— ③ 多服切换：想玩哪个就切哪个 (66.5 → 76.5) ——

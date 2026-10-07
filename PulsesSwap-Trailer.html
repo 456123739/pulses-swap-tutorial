@@ -51,14 +51,20 @@ canvas{position:fixed;inset:0;z-index:0}
 /* ===== 文字 ===== */
 #txt{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;z-index:3;pointer-events:none}
 #txt>div{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;white-space:nowrap;will-change:transform,opacity,filter}
-.g1{font-size:48px;font-weight:900;letter-spacing:2px;
+.g1{font-size:46px;font-weight:300;letter-spacing:8px;
+  font-family:'DIN Condensed','Oswald','Bebas Neue','SF Pro Display','Microsoft YaHei UI',sans-serif;
   background:linear-gradient(120deg,#7fd4c1,#c5e8d8,#7b9dc9,#7fd4c1);background-size:200% auto;
   -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
   filter:drop-shadow(0 0 40px rgba(127,212,193,.2))}
-.g2{font-size:28px;font-weight:700;color:#fff;letter-spacing:1px;text-shadow:0 0 40px rgba(127,212,193,.25)}
-.g2 b{color:#7fd4c1;text-shadow:0 0 25px rgba(127,212,193,.5)}
-.g3{font-size:13px;font-weight:500;color:#8a9ea0;letter-spacing:8px}
-.gnum{font-size:160px;font-weight:900;color:transparent;-webkit-text-stroke:1.5px rgba(127,212,193,.15)}
+.g2{font-size:24px;font-weight:200;color:#fff;letter-spacing:3px;
+  font-family:'SF Pro Display','Inter','Microsoft YaHei UI',sans-serif;
+  text-shadow:0 0 40px rgba(127,212,193,.2)}
+.g2 b{color:#7fd4c1;font-weight:400;text-shadow:0 0 25px rgba(127,212,193,.5)}
+.g3{font-size:12px;font-weight:300;color:#8a9ea0;letter-spacing:12px;
+  font-family:'SF Pro Display','Inter','Microsoft YaHei UI',sans-serif;text-transform:uppercase}
+.gnum{font-size:180px;font-weight:100;letter-spacing:-5px;color:transparent;
+  -webkit-text-stroke:1px rgba(127,212,193,.12);
+  font-family:'DIN Condensed','Oswald','SF Pro Display',sans-serif}
 
 /* ===== 高斯模糊 ===== */
 #blur{position:fixed;inset:0;z-index:2;pointer-events:none;opacity:0;
@@ -119,8 +125,8 @@ canvas{position:fixed;inset:0;z-index:0}
 </div>
 <div id="txt">
   <div class="g1" id="t1">PULSES SWAP</div>
-  <div class="g2" id="t2">拖入即<b>就绪</b></div>
-  <div class="g2" id="t3"><b>毫秒级</b>替换</div>
+  <div class="g2" id="t2">即<b>就绪</b></div>
+  <div class="g2" id="t3"><b>毫秒</b>替换</div>
   <div class="g2" id="t4">增量<b>同步</b></div>
   <div class="g1" id="t5">枪包管理引擎</div>
   <div class="gnum" id="t6">2.1</div>

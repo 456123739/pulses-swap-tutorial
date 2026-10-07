@@ -34,6 +34,11 @@ jobs:
           npm install playwright@1.47.2 --no-audit --no-fund
           npx playwright install chromium
 
+      - name: 安装 ffmpeg
+        run: |
+          choco install ffmpeg --no-progress -y
+          echo "C:\ProgramData\chocolatey\bin" >> $env:GITHUB_PATH
+
       - name: 抽出内嵌背景音乐
         run: node tools/extract_audio.js PulsesSwap-Trailer.html audio.mp3
 

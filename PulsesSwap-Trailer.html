@@ -655,18 +655,12 @@
     content: '';
     position: absolute;
     left: 50%; top: 50%;
-    /* 衬底只做"轻微压暗"，不做黑块。
-       可读性主要由 .txt 自身的多层 text-shadow（字形描边）承担 ——
-       字形描边是贴着笔画走的，衬底是大面积色块，两者叠加等于重复加固，
-       读起来就像给字幕糊了一层黑滤镜。 */
-    width: 118%; height: 185%;
-    transform: translate(-50%, -50%);
-    background: radial-gradient(ellipse at center,
-      rgba(2,4,5,.34) 0%,
-      rgba(2,4,5,.20) 32%,
-      rgba(2,4,5,.07) 58%,
-      transparent 76%);
-    filter: blur(14px);
+    /* 逐字幕衬底已废弃。
+       它是大面积色块，压在亮色软件窗口上就是一坨灰黑涂抹 —— 而且每行字幕一坨。
+       对比度改由"整帧均匀压暗"(#dim) 承担：均匀、不露形、可读性一样够。 */
+    display: none;
+    width: 0; height: 0;
+    background: none;
     z-index: -1;
     pointer-events: none;
   }
@@ -1625,7 +1619,10 @@ const APP_MODEL = {
     d.style.lineHeight = opts.big ? '1.05' : '1.4';
     d.style.whiteSpace = 'pre-wrap';
     // 更强可读性：多层阴影勾勒字形
-    d.style.textShadow = '0 0 2px rgba(0,0,0,.95), 0 2px 18px rgba(0,0,0,.9), 0 0 60px rgba(0,0,0,.7)';
+    // 不要给字形加贴边黑描边：0 0 3px 的暗圈会把笔画本身吃掉，
+    // 近白的字会被读成暗色 —— 这就是"文字颜色丢失"的真正原因。
+    // 对比度改由整帧压暗(#dim)承担，字形保持纯粹的颜色。
+    d.style.textShadow = 'none';
     d.innerHTML = opts.html.replace(/\{a\}/g, '<span style="color:' + ACCENT + ';">')
       .replace(/\{\/a\}/g, '</span>');
     d.style.filter = 'blur(12px)';
@@ -2264,6 +2261,16 @@ const APP_MODEL = {
   const pot = { expDone: 0 };   // 跨帧状态
 
   const blurOverlay = document.getElementById('blur');
+  // 整帧均匀压暗：给浅色字幕在亮色窗口上撑对比度，但不留下任何"涂抹"形状。
+  // z-index 38 —— 在软件窗口(10)/MC(32) 之上、字幕层(40) 之下。
+  const dimOverlay = document.createElement('div');
+  dimOverlay.id = 'dim';
+  dimOverlay.style.cssText =
+    'position:fixed;inset:0;z-index:38;pointer-events:none;opacity:0;background:rgba(3,5,6,.60);';
+  document.body.appendChild(dimOverlay);
+  function dimOn()  { gsap.to(dimOverlay, { opacity: 1, duration: .7, ease: 'appleSoft' }); }
+  function dimOff() { gsap.to(dimOverlay, { opacity: 0, duration: .6, ease: 'appleIn' }); }
+
   function blurOn() { gsap.to(blurOverlay, { opacity: 1, duration: .6, ease: 'appleSoft' }); }
   function blurOff() { gsap.to(blurOverlay, { opacity: 0, duration: .6, ease: 'appleIn' }); }
 
@@ -2431,6 +2438,10 @@ const APP_MODEL = {
     tl.add(() => txtIn(tEngSub, .7, .16), BEATP(39) + .28);
     tl.to(cam, { rotY: 10, rotX: 6, duration: 2.2, ease: 'appleSoft', onUpdate: applyCam, onComplete: applyCam }, BEATP(39));
     tl.add(() => { txtOut(tEng, .55, 0); txtOut(tEngSub, .55, 0); blurOff(); }, BEATP(45));
+
+    // 从这一章开始画面里有亮色软件窗口，字幕（浅色字）需要整帧压暗来撑对比度。
+    // 用 dim 而不是逐字幕衬底：均匀、不露形，不会出现一坨坨灰黑涂抹。
+    tl.add(() => dimOn(), BEATP(46));
 
     // ═══════════ ACT 3: 功能演示 ═══════════
 
@@ -2791,6 +2802,7 @@ const APP_MODEL = {
     t7a.style.textShadow = '0 0 50px rgba(127,212,193,.45)';
     const t7b = makeText({ size: 20, html: 'Tacz 枪包管理引擎 · 拖入 · 替换 · 同步', color: '#dcebe7', yOffset: -16 });
     const t7c = makeText({ size: 18, html: 'PULSES{a}0{/a} STUDIO · BETA', color: '#c2d2d4', yOffset: 44 });
+    tl.add(() => dimOff(), 87.90);        // 结尾章改用整体高斯模糊，压暗层退场
     tl.add(() => { txtIn(t7a, .9, 0); blurOn(); }, 88.0);
     tl.add(() => txtIn(t7b, .8, .16), 88.6);
     tl.add(() => txtIn(t7c, .8, .26), 88.6);          // 制作组与大字幕同批出现，不再单独迟到

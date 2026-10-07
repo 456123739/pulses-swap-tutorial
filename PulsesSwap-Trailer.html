@@ -126,6 +126,60 @@
     height: 1px; opacity: 0; will-change: opacity, transform;
   }
 
+  /* ===== 资源管理器（展示替换过程） ===== */
+  #explorer {
+    position: fixed; right: 3.4vw; top: 50%; transform: translateY(-50%) translateX(40px);
+    width: 328px; z-index: 30; opacity: 0; pointer-events: none;
+    border-radius: 12px; overflow: hidden;
+    background: rgba(250,252,252,.94);
+    border: 1px solid rgba(255,255,255,.55);
+    box-shadow: 0 28px 80px rgba(0,0,0,.62), 0 0 0 .5px rgba(255,255,255,.28),
+                inset 0 1px 0 rgba(255,255,255,.9);
+    -webkit-backdrop-filter: blur(20px) saturate(1.5); backdrop-filter: blur(20px) saturate(1.5);
+    font-family: 'SF Pro Display','Inter','Microsoft YaHei UI',sans-serif;
+  }
+  #explorer .exp-bar {
+    height: 38px; display: flex; align-items: center; gap: 8px; padding: 0 13px;
+    background: rgba(255,255,255,.72); border-bottom: 1px solid rgba(209,220,222,.6);
+    font-size: 13px; font-weight: 600; color: #2c3e3f; letter-spacing: .3px;
+  }
+  #explorer .exp-bar .dot3 { display: flex; gap: 5px; margin-right: 4px; }
+  #explorer .exp-bar .dot3 i { width: 9px; height: 9px; border-radius: 50%; display: block; }
+  #explorer .exp-bar .dot3 i:nth-child(1) { background: #e85b5b; }
+  #explorer .exp-bar .dot3 i:nth-child(2) { background: #e8b93e; }
+  #explorer .exp-bar .dot3 i:nth-child(3) { background: #5bbf6a; }
+  #explorer .exp-head {
+    display: flex; justify-content: space-between; padding: 7px 13px;
+    font-size: 11px; color: #9aabad; border-bottom: 1px solid rgba(224,232,234,.9);
+    text-transform: uppercase; letter-spacing: 1px;
+  }
+  #explorer .exp-body { padding: 6px 0; height: 300px; overflow: hidden; }
+  #explorer .exp-row {
+    display: flex; align-items: center; gap: 8px; padding: 6px 13px;
+    font-size: 12px; color: #2c3e3f; position: relative;
+  }
+  #explorer .exp-row .fico {
+    width: 24px; height: 24px; flex-shrink: 0; display: flex;
+    align-items: center; justify-content: center;
+  }
+  #explorer .exp-row .fname { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #explorer .exp-row .fmeta { font-size: 11px; color: #9aabad; }
+  /* 替换时的绿色高亮扫过 */
+  #explorer .exp-row.hit {
+    background: rgba(91,168,154,.16);
+  }
+  #explorer .exp-row.hit .fmeta { color: #3d7a6e; font-weight: 600; }
+  #explorer .exp-row .stamp {
+    position: absolute; right: 13px; top: 50%; transform: translateY(-50%) scale(.6);
+    color: #5BA89A; opacity: 0;
+  }
+  #explorer .exp-foot {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 9px 13px; border-top: 1px solid rgba(224,232,234,.9);
+    background: rgba(247,250,251,.9); font-size: 12px; color: #6b7b7d;
+  }
+  #explorer .exp-foot .spd { color: #3d7a6e; font-weight: 600; }
+
   /* ===== 拖拽幽灵卡片（3D 场景内，随窗口一起变换） ===== */
   .drag-ghost {
     position: absolute; left: 0; top: 0;
@@ -192,10 +246,8 @@
     user-select: none;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
-    max-width: 86vw;              /* 永不溢出左右边界 */
     padding: 0 2vw;               /* 左右安全留白 */
-    white-space: normal;          /* 过长自动换行 */
-    overflow-wrap: break-word;
+    white-space: nowrap;          /* 介绍时绝不换行 */
     box-sizing: border-box;
     /* 不使用描边，靠衬底保证对比 */
     -webkit-text-stroke: 0;
@@ -240,6 +292,15 @@
 </head>
 <body>
   <canvas id="cv"></canvas>
+  <div id="explorer">
+    <div class="exp-bar">
+      <span class="dot3"><i></i><i></i><i></i></span>
+      <span>tacz</span>
+    </div>
+    <div class="exp-head"><span>名称</span><span>状态</span></div>
+    <div class="exp-body" id="expBody"></div>
+    <div class="exp-foot"><span id="expStatus">就绪</span><span class="spd" id="expCount"></span></div>
+  </div>
   <div id="chaos"></div>
   <div id="noise"></div>
   <div id="mood"></div>
@@ -1079,6 +1140,7 @@ const APP_MODEL = {
     const _sz = (opts.size || (opts.big ? 64 : 26));
     const _vwCap = opts.big ? 7.2 : 4.6;
     d.style.fontSize = 'min(' + _sz + 'px, ' + _vwCap + 'vw)';
+    d._baseSize = _sz;
     d.style.color = opts.color || '#eef8f4';
     d.style.textAlign = 'center';
     d.style.lineHeight = opts.big ? '1.05' : '1.4';
@@ -1093,7 +1155,94 @@ const APP_MODEL = {
     d._yOff = (opts.yOffset || 0);
     d.style.transform = 'translate(-50%, calc(-50% + ' + d._yOff + 'px)) scale(.9)';
     txtLayer.appendChild(d);
+    // 单行自适应：放不下就等比缩小，绝不换行
+    requestAnimationFrame(() => fitText(d));
     return d;
+  }
+
+  // 单行自适应缩放：保持一行，必要时缩小字号
+  function fitText(el) {
+    if (!el || !el.parentNode) return;
+    const maxW = window.innerWidth * 0.90;
+    el.style.maxWidth = 'none';
+    el.style.whiteSpace = 'nowrap';
+    el.style.fontSize = (el._baseSize || 28) + 'px';
+    const w = el.offsetWidth;                     // 布局宽度（不受 transform 影响）
+    if (w > maxW) {
+      const cur = parseFloat(window.getComputedStyle(el).fontSize) || (el._baseSize || 28);
+      el.style.fontSize = Math.max(11, cur * maxW / w).toFixed(2) + 'px';
+    }
+  }
+  function fitAllText() {
+    txtLayer.querySelectorAll('.txt').forEach(fitText);
+  }
+  // 字体就绪 / 窗口尺寸变化时重新适配
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(() => fitAllText());
+  }
+  window.addEventListener('resize', () => fitAllText());
+
+  // ---- 精确聚焦：由控件位置反算相机位移（消除聚焦偏移） ----
+  function focusCam(id, scale, rotX, rotY, tz) {
+    const r = wrect(id);
+    const cx = r.cx, cy = r.cy;              // 相对窗口中心
+    const rx = (rotX || 0) * Math.PI / 180;
+    const ry = (rotY || 0) * Math.PI / 180;
+    const s = scale;
+    // transform 顺序: scale → rotateZ → rotateY → rotateX → translateZ → translate
+    const x1 = cx * s * Math.cos(ry);
+    const z1 = -cx * s * Math.sin(ry);
+    const y1 = cy * s * Math.cos(rx) + z1 * Math.sin(rx);
+    const z2 = cy * s * Math.sin(rx) + z1 * Math.cos(rx) + (tz || 0);
+    const P = 1600;                           // 与 #scene 的 perspective 一致
+    const k = P / Math.max(P - z2, 1);
+    return {
+      scale: s, rotX: (rotX || 0), rotY: (rotY || 0), rotZ: 0, tz: (tz || 0),
+      tx: -x1 * k, ty: -y1 * k
+    };
+  }
+
+  // ---- 资源管理器：展示替换过程 ----
+  const explorer = document.getElementById('explorer');
+  const expBody = document.getElementById('expBody');
+  const expStatus = document.getElementById('expStatus');
+  const expCount = document.getElementById('expCount');
+  let expRows = [];
+
+  function explorerShow(files) {
+    expBody.innerHTML = '';
+    expRows = [];
+    files.forEach((f) => {
+      const row = document.createElement('div');
+      row.className = 'exp-row';
+      const ic = (typeof VIcon === 'function') ? VIcon('pack', 18, '#7b9dc9') : '';
+      row.innerHTML = '<div class="fico">' + ic + '</div>' +
+        '<div class="fname">' + f + '</div>' +
+        '<div class="fmeta">—</div>' +
+        '<div class="stamp">' + ((typeof VIcon === 'function') ? VIcon('check', 18, '#5BA89A') : '') + '</div>';
+      expBody.appendChild(row);
+      expRows.push(row);
+    });
+    expStatus.textContent = '就绪';
+    expCount.textContent = files.length + ' 个文件';
+    gsap.fromTo(explorer, { opacity: 0, x: 46 }, { opacity: 1, x: 0, duration: .55, ease: 'power3.out' });
+    // 行逐个浮现
+    expRows.forEach((r, i) => {
+      gsap.fromTo(r, { opacity: 0, x: -12 }, { opacity: 1, x: 0, duration: .3, delay: i * .045, ease: 'power2.out' });
+    });
+  }
+  function explorerHit(i) {
+    const row = expRows[i];
+    if (!row) return;
+    row.classList.add('hit');
+    const meta = row.querySelector('.fmeta');
+    const stamp = row.querySelector('.stamp');
+    if (meta) meta.textContent = '已替换';
+    gsap.to(row, { backgroundColor: 'rgba(91,168,154,.16)', duration: .18 });
+    gsap.fromTo(stamp, { opacity: 0, scale: .5 }, { opacity: 1, scale: 1, duration: .28, ease: 'back.out(2)' });
+  }
+  function explorerHide() {
+    gsap.to(explorer, { opacity: 0, x: 40, duration: .5, ease: 'power2.in' });
   }
 
   // ---- 拖拽幽灵卡片 ----
@@ -1277,6 +1426,8 @@ const APP_MODEL = {
         onStart: () => gsap.set(pRings, { opacity: .55 }) });
   }
 
+  const pot = { expDone: 0 };   // 跨帧状态
+
   const blurOverlay = document.getElementById('blur');
   function blurOn() { gsap.to(blurOverlay, { opacity: 1, duration: .6, ease: 'power2.out' }); }
   function blurOff() { gsap.to(blurOverlay, { opacity: 0, duration: .6, ease: 'power2.in' }); }
@@ -1314,6 +1465,9 @@ const APP_MODEL = {
     gsap.set(['.p-grid'], { filter: 'none' });
     gsap.set(chaosItems, { filter: 'none', scale: 1 });
     glitchLayer.innerHTML = '';
+    pot.expDone = 0;
+    gsap.set(explorer, { opacity: 0, x: 40 });
+    expBody.innerHTML = ''; expRows = [];
     document.querySelectorAll('.p-grid,.p-grid-top').forEach(g => g.style.backgroundSize = '64px 64px');
     tl = gsap.timeline({ onComplete: () => { repBtn.style.opacity = '1'; } });
 
@@ -1405,7 +1559,7 @@ const APP_MODEL = {
     // 演示 1 (对应痛点1): 拖入即就绪 — 解决手动替换
     const t3 = makeText({ size: 28, html: '拖入即{a}就绪{/a} — 告别手动替换', color: '#e4f0ea' });
     tl.add(() => txtIn(t3, .9, 0), 20.4);
-    tl.to(cam, { rotY: -14, rotX: 6, scale: 1.5, tz: 80, tx: 250, ty: -150, duration: 1.8, ease: 'power3.inOut', onUpdate: applyCam, onComplete: applyCam }, 20.7);
+    tl.to(cam, Object.assign(focusCam('pack_drop', 1.5, 6, -14, 80), { duration: 1.8, ease: 'power3.inOut', onUpdate: applyCam, onComplete: applyCam }), 20.7);
     // —— 拖入动画：文件卡片从窗口外飞入拖入框 ——
     // 目标位置在构建期就算好（wrect 基于布局，不受 3D 变换影响）
     const _dr = wrect('pack_drop');
@@ -1439,7 +1593,7 @@ const APP_MODEL = {
     // 演示 2 (对应痛点2): 预设管理 — 解决版本混乱
     const t4 = makeText({ size: 28, html: '预设{a}管理{/a} — 告别版本混乱', color: '#e4f0ea' });
     tl.add(() => txtIn(t4, .9, 0), 26.0);
-    tl.to(cam, { rotY: -16, rotX: 4, scale: 1.35, tz: 40, tx: 260, ty: 60, duration: 1.8, ease: 'power3.inOut', onUpdate: applyCam, onComplete: applyCam }, 26.3);
+    tl.to(cam, Object.assign(focusCam('preset_list', 1.35, 4, -16, 40), { duration: 1.8, ease: 'power3.inOut', onUpdate: applyCam, onComplete: applyCam }), 26.3);
     tl.add(() => {
       renderer.setListItems('preset_list', [
         { text: 'default', bg: 'transparent' },
@@ -1470,58 +1624,121 @@ const APP_MODEL = {
     // 演示 3 (对应痛点3): 毫秒替换 + 进度
     const t5 = makeText({ size: 28, html: '毫秒{a}替换{/a} — 一键完成', color: '#e4f0ea' });
     tl.add(() => txtIn(t5, .9, 0), 31.8);
-    tl.to(cam, { rotY: 8, rotX: 4, scale: 1.2, tz: 30, tx: -80, ty: 120, duration: 1.8, ease: 'power3.inOut', onUpdate: applyCam, onComplete: applyCam }, 32.1);
+    tl.to(cam, Object.assign(focusCam('btn_apply', 1.2, 4, 8, 30), { duration: 1.8, ease: 'power3.inOut', onUpdate: applyCam, onComplete: applyCam }), 32.1);
     tl.add(() => {
       renderer.show('progress', true);
       renderer.show('progress_label', true);
       renderer.setButtonEnabled('btn_apply', true);
     }, 33.4);
     tl.add(() => renderer.flashButton('btn_apply'), 34.0);
+    // —— 点击替换：资源管理器窗口弹出，实时展示替换过程 ——
+    const EXP_FILES = ['awp_dragon.tar.gz', 'ak47_redline.tar.gz', 'm4a1_storm.tar.gz',
+                       'deagle_blaze.tar.gz', 'sniper_ghost.tar.gz'];
+    tl.add(() => { explorerShow(EXP_FILES); expStatus.textContent = '正在替换…'; }, 34.05);
     tl.add(() => renderer.setLabel('progress_label', '替换中…'), 34.2);
-    tl.to({ v: 0 }, { v: 1, duration: 2.2, ease: 'power2.inOut', onUpdate: function () { renderer.setProgress('progress', this.targets()[0].v); } }, 34.4);
+    tl.to({ v: 0 }, { v: 1, duration: 2.2, ease: 'power2.inOut',
+      onUpdate: function () {
+        const p = this.targets()[0].v;
+        renderer.setProgress('progress', p);
+        // 资源管理器：随进度逐行变绿
+        const done = Math.floor(p * EXP_FILES.length + 1e-6);
+        if (pot.expDone < done) {
+          for (let i = pot.expDone; i < done; i++) explorerHit(i);
+          pot.expDone = done;
+          expCount.textContent = done + '/' + EXP_FILES.length + ' 已替换';
+        }
+        expStatus.textContent = p < 1 ? '正在替换…' : '完成';
+      } }, 34.4);
     tl.add(() => { renderer.setProgress('progress', 1); renderer.setButtonText('btn_apply', '已应用'); renderer.setLabel('progress_label', '完成'); renderer.setLabel('info_status', '状态: 已应用'); }, 36.7);
+    tl.add(() => { expStatus.textContent = '完成 · 用时 0.3s'; expCount.textContent = '5/5 已替换'; }, 36.8);
+    tl.add(() => explorerHide(), 37.6);
     tl.add(() => txtOut(t5, .6, 0), 37.0);
 
-    // 演示 4: 增量同步 + 实时校验（解决重下问题）
+    // 演示 4: 增量同步 — 拖入更新包 + 列表刷新（解决重下问题）
     const t6 = makeText({ size: 28, html: '增量{a}同步{/a} — 更新只传变化部分', color: '#e4f0ea' });
-    tl.add(() => txtIn(t6, .9, 0), 37.6);
-    tl.to(cam, { rotY: -4, rotX: 8, scale: 0.78, tz: -80, tx: 0, ty: 0, duration: 2.0, ease: 'power3.inOut', onUpdate: applyCam, onComplete: applyCam }, 37.9);
+    tl.add(() => txtIn(t6, .9, 0), 37.5);
+    // 相机聚焦到导入区（更新包拖入的位置）
+    tl.to(cam, Object.assign(focusCam('import_drop', 1.45, 5, -12, 60),
+      { duration: 1.6, ease: 'power3.inOut', onUpdate: applyCam, onComplete: applyCam }), 37.7);
+
+    // —— 拖入 .fgcupdate 更新包 ——
+    const _ur = wrect('import_drop');
+    const updCX = _ur.x + _ur.w / 2, updCY = _ur.y + _ur.h / 2;
+    const ghost2 = spawnDragGhost('PVP_v1.0.0_upd1.fgcupdate');
+    ghost2.style.left = (updCX - 75) + 'px';
+    ghost2.style.top  = (updCY - 46) + 'px';
+    gsap.set(ghost2, { x: 700, y: -380, z: 90, scale: 1.5, rotation: 12, opacity: 0 });
+    tl.to(ghost2, { opacity: 1, duration: .3, ease: 'power2.out' }, 38.5);
+    tl.to(ghost2, { keyframes: [
+        { x: 260, y: -160, duration: .4, ease: 'power2.out', rotation: 4 },
+        { x: 0, y: 0, duration: .56, ease: 'power3.inOut', rotation: 0, scale: 1 }
+      ] }, 38.65);
+    // 落点：导入框发光 + 冲击环 + 进度提示
+    tl.add(() => {
+      renderer.setGuideGlow('import_drop', true);
+      dropRingAt(updCX, updCY);
+      renderer.show('progress', true);
+      renderer.show('progress_label', true);
+      renderer.setLabel('progress_label', '正在应用增量更新…');
+    }, 39.6);
+    tl.to(ghost2, { scale: .55, opacity: 0, duration: .28, ease: 'power2.in' }, 39.75);
+    tl.add(() => { if (ghost2 && ghost2.parentNode) ghost2.remove(); }, 40.05);
+    // 进度快速走完（增量包很小）
+    tl.to({ v: 0 }, { v: 1, duration: .8, ease: 'power2.inOut',
+      onUpdate: function () { renderer.setProgress('progress', this.targets()[0].v); } }, 39.9);
+
+    // —— 更新列表：应用增量后，枪包列表刷新并标出变化 ——
     tl.add(() => {
       const T = APP_MODEL.theme;
-      renderer.setLabel('gunpack_count', '共 12 个枪包');
-      renderer.setButtonEnabled('btn_open_tacz', true);
-      renderer.setButtonEnabled('btn_refresh_gun', true);
+      renderer.setGuideGlow('import_drop', false);
+      renderer.setProgress('progress', 1);
+      renderer.setLabel('progress_label', '更新完成 · 校验数据已同步');
+      renderer.setLabel('gunpack_count', '共 7 个枪包 (正常:4 新增:2 变更:1)');
       renderer.setListItems('gunpack_list', [
-        { text: 'modern_warfare_2.tar.gz', bg: T.statusNormalBg, fg: T.statusNormal },
-        { text: 'create_armament.tar.gz',  bg: T.statusNormalBg, fg: T.statusNormal },
-        { text: 'timeless_and_classics.tar.gz', bg: T.statusModifiedBg, fg: T.statusModified },
-        { text: 'dabob_guns.tar.gz',      bg: T.statusNormalBg, fg: T.statusNormal },
-        { text: 'additional_guns.tar.gz', bg: T.statusAddedBg,  fg: T.statusAdded },
-        { text: 'cgm_guns_pack.tar.gz',   bg: T.statusModifiedBg, fg: T.statusModified },
-        { text: 'heroxine_guns.tar.gz',   bg: T.statusNormalBg, fg: T.statusNormal },
-        { text: 'victoriss_guns.tar.gz',  bg: T.statusAddedBg,  fg: T.statusAdded },
+        { text: 'awp_dragon.tar.gz',    bg: T.statusNormalBg,   fg: T.statusNormal },
+        { text: 'ak47_redline.tar.gz',  bg: T.statusNormalBg,   fg: T.statusNormal },
+        { text: 'm4a1_storm.tar.gz',    bg: T.statusNormalBg,   fg: T.statusNormal },
+        { text: 'deagle_blaze.tar.gz',  bg: T.statusNormalBg,   fg: T.statusNormal },
+        { text: 'sniper_ghost.tar.gz',  bg: T.statusAddedBg,    fg: T.statusAdded },
+        { text: 'vector_smg.tar.gz',    bg: T.statusAddedBg,    fg: T.statusAdded },
+        { text: 'm4a1_storm2.tar.gz',   bg: T.statusModifiedBg, fg: T.statusModified },
       ], { animate: true });
-    }, 39.2);
-    const t6b = makeText({ size: 22, html: '正常 · 新增 · 变更 — 实时校验', color: '#dcebe7', yOffset: 54 });
-    tl.add(() => txtIn(t6b, .8, 0), 40.4);
-    tl.to(cam, { rotY: 6, rotX: 6, scale: 0.82, duration: 3.0, ease: 'power2.inOut', onUpdate: applyCam, onComplete: applyCam }, 39.5);
-    tl.add(() => { txtOut(t6, .6, 0); txtOut(t6b, .6, 0); }, 42.6);
+    }, 40.7);
+    // 新增/变更条目依次脉冲，强调"只更新了这几个"
+    tl.add(() => {
+      const rows = renderer.get('gunpack_list').children;
+      [4, 5, 6].forEach((i, k) => {
+        const row = rows[i]; if (!row) return;
+        gsap.fromTo(row, { scale: 1 }, { scale: 1.035, duration: .18, delay: k * .12,
+          yoyo: true, repeat: 1, ease: 'power2.inOut' });
+        gsap.fromTo(row, { boxShadow: '0 0 0 0 rgba(127,212,193,0)' },
+          { boxShadow: '0 0 0 2px rgba(127,212,193,.75)', duration: .25, delay: k * .12,
+            yoyo: true, repeat: 1, ease: 'power2.out' });
+      });
+    }, 41.3);
+    const t6b = makeText({ size: 22, html: '只同步变化的部分 — 无需重下整个整合包', color: '#dcebe7', yOffset: 54 });
+    tl.add(() => txtIn(t6b, .8, 0), 41.5);
+    tl.add(() => { renderer.show('progress', false); renderer.show('progress_label', false); }, 43.0);
+    // 拉远回全景
+    tl.to(cam, Object.assign(focusCam('gunpack_list', 0.84, 6, 4, -40),
+      { duration: 1.6, ease: 'power3.inOut', onUpdate: applyCam, onComplete: applyCam }), 42.2);
+    tl.add(() => { txtOut(t6, .6, 0); txtOut(t6b, .6, 0); }, 43.4);
 
-    // ═══════════ ACT 4: 定格升华 (43-50s) ═══════════
+    // ═══════════ ACT 4: 定格升华 (44-51s) ═══════════
 
     const t7a = makeText({ big: true, size: 48, html: '{a}PULSE ENGINE{/a}', color: '#f2faf7', yOffset: -96 });
     t7a.style.textShadow = '0 0 50px rgba(127,212,193,.45)';
     const t7b = makeText({ size: 20, html: 'Tacz 枪包管理引擎 · 拖入 · 替换 · 同步', color: '#dcebe7', yOffset: -14 });
     const t7c = makeText({ size: 18, html: 'PULSES{a}0{/a} STUDIO · BETA', color: '#c2d2d4', yOffset: 46 });
-    tl.add(() => { txtIn(t7a, 1.1, 0); blurOn(); }, 43.2);
-    tl.add(() => txtIn(t7b, .9, .2), 43.8);
-    tl.to(cam, { scale: 0.4, tz: -260, rotX: 14, rotY: -8, duration: 4.4, ease: 'power3.inOut', onUpdate: applyCam, onComplete: applyCam }, 43.4);
-    tl.to(winEl, { opacity: 0.25, duration: 3.0, ease: 'power2.inOut' }, 43.8);
-    tl.add(() => txtIn(t7c, .9, 0), 45.4);
-    tl.add(() => { txtOut(t7a, 1.0, 0); txtOut(t7b, 1.0, 0); txtOut(t7c, 1.0, 0); blurOff(); }, 48.6);
+    tl.add(() => { txtIn(t7a, 1.1, 0); blurOn(); }, 44.1);
+    tl.add(() => txtIn(t7b, .9, .2), 44.7);
+    tl.to(cam, { scale: 0.4, tz: -260, rotX: 14, rotY: -8, duration: 4.4, ease: 'power3.inOut', onUpdate: applyCam, onComplete: applyCam }, 44.3);
+    tl.to(winEl, { opacity: 0.25, duration: 3.0, ease: 'power2.inOut' }, 44.7);
+    tl.add(() => txtIn(t7c, .9, 0), 46.3);
+    tl.add(() => { txtOut(t7a, 1.0, 0); txtOut(t7b, 1.0, 0); txtOut(t7c, 1.0, 0); blurOff(); }, 49.2);
 
     // progress bar
-    tl.to(bar, { width: '100%', duration: 50, ease: 'none' }, 0);
+    tl.to(bar, { width: '100%', duration: 51, ease: 'none' }, 0);
   }
 
   repBtn.addEventListener('click', () => {

@@ -507,10 +507,12 @@
     width: 322px; z-index: 30; opacity: 0; pointer-events: none;
     transform: translateX(40px);
     border-radius: 12px; overflow: hidden;
-    background: rgba(250,252,252,.94);
-    border: 1px solid rgba(255,255,255,.55);
-    box-shadow: 0 28px 80px rgba(0,0,0,.62), 0 0 0 .5px rgba(255,255,255,.28),
-                inset 0 1px 0 rgba(255,255,255,.9);
+    /* 提高不透明度并压掉背景透出来的暗 —— 原来 .94 + 强 backdrop-filter，
+       压在深色场景上整体发灰发暗。 */
+    background: rgba(255,255,255,.985);
+    border: 1px solid rgba(255,255,255,.85);
+    box-shadow: 0 28px 80px rgba(0,0,0,.55), 0 0 0 .5px rgba(255,255,255,.55),
+                inset 0 1px 0 rgba(255,255,255,1);
     -webkit-backdrop-filter: blur(20px) saturate(1.5); backdrop-filter: blur(20px) saturate(1.5);
     font-family: 'SF Pro Display','Inter','Microsoft YaHei UI',sans-serif;
   }
@@ -532,7 +534,7 @@
   #explorer .exp-body { padding: 5px 0; height: 236px; overflow: hidden; }
   #explorer .exp-row {
     display: flex; align-items: center; gap: 8px; padding: 6px 13px;
-    font-size: 12px; color: #2c3e3f; position: relative;
+    font-size: 12px; color: #1f2e30; position: relative;
   }
   #explorer .exp-row .fico {
     width: 24px; height: 24px; flex-shrink: 0; display: flex;
@@ -2609,6 +2611,23 @@ const APP_MODEL = {
     // 金句只占"一个点"：36.796（这一句人声进）→ 40.305（副歌进，音乐换阶段）
     // 之前是 35.13→40.92，跨了 1.5 个乐段，拖太长
     const SLOGAN_IN = 36.796, SLOGAN_OUT = 40.305;
+    // 进服之后原本有 3.3s 完全静止（镜头不动、游戏内画面也不动）——太长了。
+    // 补两件事：镜头持续缓慢推近，热键栏像玩家滚轮一样逐格切换。
+    tl.to(cam, Object.assign({}, SPLIT_CAM, {
+      scale: .71, tx: -356, ty: -10, tz: -30,
+      duration: 3.0, ease: 'appleSoft', onUpdate: applyCam, onComplete: applyCam,
+    }), BEATP(81));
+    for (let k = 1; k <= 6; k++) {
+      tl.add(() => {
+        const hb = document.getElementById('mcHotbar');
+        if (!hb || !hb.children.length) return;
+        const n = hb.children.length;
+        [...hb.children].forEach((el, i) => el.classList.toggle('sel', i === (k % n)));
+        const cur = hb.children[k % n];
+        if (cur) gsap.fromTo(cur, { scale: 1.14 }, { scale: 1, duration: .22, ease: 'appleSoft' });
+      }, BEATP(81) + .16 + (k - 1) * .42);
+    }
+
     tl.add(() => txtOut(t5d, .4, 0), BEATP(84));      // 先让画面空一拍，金句才落得下来
     tl.add(() => { txtIn(t5e1, .6, .04); blurTopOn(); }, SLOGAN_IN);
     tl.add(() => txtIn(t5e2, .7, .3), SLOGAN_IN + .22);
@@ -2774,6 +2793,7 @@ const APP_MODEL = {
     }, BEATP(135));
     tl.add(() => renderer.appendLog('log_box', '  校验完成 · 5/5 通过，缺漏 0', '#7fd4c1'), BEATP(136));
     tl.add(() => { txtOut(t8d, .5, 0); }, BEATP(137) - .25);
+    tl.add(() => explorerHide(), BEATP(137) - .10);   // 原来忘了收，一直留到片尾
 
     // —— ② 版本号 + 日志：出问题能定位 (57.0 → 66.5) ——
     const t9a = makeText({ size: 30, html: '每个预设{a}独立版本号{/a} — 不会被别的服覆盖', color: '#e4f0ea' });
@@ -2837,13 +2857,19 @@ const APP_MODEL = {
 
     // ═══════════ ACT 5: 定格升华 (88.0s → 96.6s) ═══════════
     // 结尾落在歌曲 93→97.5s 的分解段里：94.5→96.6s 几乎全静音，音乐淡出时画面只剩署名
-    const t7a = makeText({ big: true, size: 48, html: '{a}PULSE ENGINE{/a}', color: '#f2faf7', yOffset: -84 });
+    // 收尾顺序：先一句哲学化总结把调性拉起来，再落署名。
+    // 署名内部也有次序 —— 软件名 → 工作室 → 版本号。
+    const tPhi = makeText({ size: 31, html: '最好的工具，是让人忘记它的存在', color: '#eaf4f1' });
+    tl.add(() => { txtIn(tPhi, .9, 0); blurOn(); }, 88.0);
+    tl.add(() => txtOut(tPhi, .6, 0), 91.05);
+
+    const t7a = makeText({ big: true, size: 50, html: 'PULSES {a}SWAP{/a}', color: '#f2faf7', yOffset: -74 });
     t7a.style.textShadow = '0 0 50px rgba(127,212,193,.45)';
-    const t7b = makeText({ size: 20, html: 'Tacz 枪包管理引擎 · 拖入 · 替换 · 同步', color: '#dcebe7', yOffset: -16 });
-    const t7c = makeText({ size: 18, html: 'PULSES{a}0{/a} STUDIO · BETA', color: '#c2d2d4', yOffset: 44 });
-    tl.add(() => { txtIn(t7a, .9, 0); blurOn(); }, 88.0);
-    tl.add(() => txtIn(t7b, .8, .16), 88.6);
-    tl.add(() => txtIn(t7c, .8, .26), 88.6);          // 制作组与大字幕同批出现，不再单独迟到
+    const t7b = makeText({ size: 19, html: 'PULSES{a}0{/a} STUDIO', color: '#c8d8d6', yOffset: 10 });
+    const t7c = makeText({ size: 15, html: 'v2.1 · BETA', color: '#9db0b3', yOffset: 48 });
+    tl.add(() => txtIn(t7a, .9, 0), 91.35);
+    tl.add(() => txtIn(t7b, .8, .22), 91.95);
+    tl.add(() => txtIn(t7c, .8, .34), 92.55);
     tl.to(cam, { scale: 0.4, tz: -260, rotX: 14, rotY: -8, duration: 3.2, ease: 'appleOut', onUpdate: applyCam, onComplete: applyCam }, 88.2);
     tl.to(winEl, { opacity: 0.25, duration: 2.2, ease: 'appleSoft' }, 88.6);
     // 三行同时在场、一起退场，收在音乐淡出的空隙里

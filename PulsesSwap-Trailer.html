@@ -48,19 +48,19 @@ canvas{position:fixed;inset:0;z-index:0}
 .win-edge.g{border:1px solid rgba(80,255,180,.35);transform:translateZ(1px)}
 .win-edge.b{border:1px solid rgba(80,140,255,.35);transform:translateZ(1px) translateX(-2px)}
 
-/* ===== 文字 ===== */
+/* ===== 文字：多字体 ===== */
 #txt{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;z-index:3;pointer-events:none}
 #txt>div{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;white-space:nowrap;will-change:transform,opacity,filter}
-.g1{font-size:46px;font-weight:300;letter-spacing:8px;
+.g1{font-size:44px;font-weight:300;letter-spacing:8px;
   font-family:'DIN Condensed','Oswald','Bebas Neue','SF Pro Display','Microsoft YaHei UI',sans-serif;
   background:linear-gradient(120deg,#7fd4c1,#c5e8d8,#7b9dc9,#7fd4c1);background-size:200% auto;
   -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
   filter:drop-shadow(0 0 40px rgba(127,212,193,.2))}
-.g2{font-size:24px;font-weight:200;color:#fff;letter-spacing:3px;
+.g2{font-size:22px;font-weight:200;color:#fff;letter-spacing:3px;
   font-family:'SF Pro Display','Inter','Microsoft YaHei UI',sans-serif;
   text-shadow:0 0 40px rgba(127,212,193,.2)}
 .g2 b{color:#7fd4c1;font-weight:400;text-shadow:0 0 25px rgba(127,212,193,.5)}
-.g3{font-size:12px;font-weight:300;color:#8a9ea0;letter-spacing:12px;
+.g3{font-size:11px;font-weight:300;color:#8a9ea0;letter-spacing:10px;
   font-family:'SF Pro Display','Inter','Microsoft YaHei UI',sans-serif;text-transform:uppercase}
 .gnum{font-size:180px;font-weight:100;letter-spacing:-5px;color:transparent;
   -webkit-text-stroke:1px rgba(127,212,193,.12);
@@ -77,7 +77,6 @@ canvas{position:fixed;inset:0;z-index:0}
   background:linear-gradient(90deg,transparent 10%,rgba(127,212,193,.5) 50%,transparent 90%);
   box-shadow:0 0 20px rgba(127,212,193,.3);opacity:0;will-change:transform,opacity}
 .ring{position:absolute;top:50%;left:50%;border-radius:50%;border:1px solid rgba(127,212,193,.2);opacity:0;will-change:transform,opacity}
-/* 压迫感巨型光晕 */
 .aura{position:absolute;top:50%;left:50%;border-radius:50%;filter:blur(80px);opacity:0;will-change:transform,opacity}
 .aura.a1{width:1500px;height:1500px;margin:-750px 0 0 -750px;background:radial-gradient(circle,rgba(91,168,154,.12),transparent 60%)}
 .aura.a2{width:1000px;height:1000px;margin:-500px 0 0 -500px;background:radial-gradient(circle,rgba(123,157,201,.08),transparent 60%)}
@@ -125,12 +124,14 @@ canvas{position:fixed;inset:0;z-index:0}
 </div>
 <div id="txt">
   <div class="g1" id="t1">PULSES SWAP</div>
-  <div class="g2" id="t2">即<b>就绪</b></div>
-  <div class="g2" id="t3"><b>毫秒</b>替换</div>
-  <div class="g2" id="t4">增量<b>同步</b></div>
-  <div class="g1" id="t5">枪包管理引擎</div>
-  <div class="gnum" id="t6">2.1</div>
-  <div class="g3" id="t7">BETA</div>
+  <div class="g2" id="t2">Tacz 枪包<b>管理引擎</b></div>
+  <div class="g2" id="t3">拖入即<b>就绪</b></div>
+  <div class="g2" id="t4"><b>毫秒</b>替换</div>
+  <div class="g2" id="t5">增量<b>同步</b></div>
+  <div class="g2" id="t6">实时<b>校验</b></div>
+  <div class="g1" id="t7">枪包管理引擎</div>
+  <div class="gnum" id="t8">2.1</div>
+  <div class="g3" id="t9">PULSES0 STUDIO · BETA</div>
 </div>
 <div id="bar"></div>
 <button id="rep">重播</button>
@@ -150,7 +151,6 @@ canvas{position:fixed;inset:0;z-index:0}
 
 </script>
 <script>
-/* ===== 粒子背景：深空感，缓慢漂浮 ===== */
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
 let W,H,parts=[];
 function resize(){W=cv.width=innerWidth;H=cv.height=innerHeight}resize();addEventListener('resize',resize);
@@ -168,7 +168,7 @@ const bar=$('bar'),rep=$('rep'),scan1=$('scan1');
 const r1=$('ring1'),r2=$('ring2'),r3=$('ring3'),aura1=$('aura1'),aura2=$('aura2');
 const edges=document.querySelectorAll('.win-edge');
 const cards=document.querySelectorAll('.win-card');
-const T={t1:$('t1'),t2:$('t2'),t3:$('t3'),t4:$('t4'),t5:$('t5'),t6:$('t6'),t7:$('t7')};
+const T={t1:$('t1'),t2:$('t2'),t3:$('t3'),t4:$('t4'),t5:$('t5'),t6:$('t6'),t7:$('t7'),t8:$('t8'),t9:$('t9')};
 gsap.set(Object.values(T),{opacity:0,scale:.8,filter:'blur(10px)'});
 gsap.set([scan1,r1,r2,r3,aura1,aura2],{opacity:0});
 gsap.set(edges,{opacity:0});
@@ -189,8 +189,7 @@ function play(){
 
   const tl=gsap.timeline({onUpdate:()=>{bar.style.width=(tl.progress()*100)+'%'}});
 
-  // ═══ 0-1s: 纯黑 → 压迫感光晕从深处涌出 → 扫描线爆裂 → 标题炸入 ═══
-  // 不展示窗口，先靠光效+粒子营造氛围
+  // ═══ 0-1.5s: 压迫氛围 → 品牌名炸入（告诉观众这是什么） ═══
   tl.to(aura1,{opacity:1,scale:1.3,duration:.6,ease:'power2.out'},0)
     .to(aura2,{opacity:1,scale:1.2,duration:.8,ease:'power2.out'},.1)
     .fromTo(scan1,{opacity:0,y:'-10%'},{opacity:1,y:'110%',duration:.25,ease:'power4.inOut'},.15)
@@ -199,101 +198,120 @@ function play(){
     .to(r1,{scale:5,opacity:0,duration:.5,ease:'power3.out'},.26)
     .to(r2,{scale:3.5,opacity:0,duration:.6,ease:'power3.out'},.26)
     .to(r3,{scale:2.5,opacity:0,duration:.7,ease:'power3.out'},.26)
-    .call(()=>showBlur(.15),[],.35)
+    .call(()=>showBlur(.15),[],.4)
     .fromTo(T.t1,{opacity:0,scale:1.4,filter:'blur(25px)'},
-      {opacity:1,scale:1,filter:'blur(0px)',duration:.5,ease:'power4.out'},.4)
-    .call(()=>hideBlur(.25),[],.95)
-    .to(T.t1,{opacity:0,scale:1.05,filter:'blur(5px)',duration:.3,ease:'power3.in'},.95)
-    // 光晕收缩（悬念收束）
-    .to(aura1,{opacity:.3,scale:.8,duration:.4,ease:'power2.in'},.95)
-    .to(aura2,{opacity:.15,scale:.7,duration:.4,ease:'power2.in'},.95);
+      {opacity:1,scale:1,filter:'blur(0px)',duration:.6,ease:'power4.out'},.45)
+    .call(()=>hideBlur(.25),[],1.1)
+    .to(T.t1,{opacity:0,scale:1.05,filter:'blur(5px)',duration:.35,ease:'power3.in'},1.1)
+    .to(aura1,{opacity:.3,scale:.8,duration:.4,ease:'power2.in'},1.0)
+    .to(aura2,{opacity:.15,scale:.7,duration:.4,ease:'power2.in'},1.0);
 
-  // ═══ 1.3-2s: 窗口从深处砸入（终于出现！）色散爆裂 ═══
+  // ═══ 1.5-3s: 窗口砸入 → 定位说明（Tacz 枪包管理引擎） ═══
   tl.to(win,{opacity:1,scale:1,rotateX:-5,rotateY:2,translateZ:0,
-    duration:.6,ease:'power4.out'},1.3)
-    .to(edges,{opacity:1,stagger:.02,duration:.1,ease:'power4.out'},1.4)
+    duration:.6,ease:'power4.out'},1.5)
+    .to(edges,{opacity:1,stagger:.02,duration:.1,ease:'power4.out'},1.6)
     .to(cards,{stagger:{each:.03},translateZ:function(i){return[6,10,14][i]||6},
-      duration:.2,ease:'power3.out'},1.45)
-    .to(edges,{opacity:0,duration:.35,ease:'power2.in'},1.55)
-    // 光晕被窗口"撑开"
-    .to(aura1,{opacity:.5,scale:1.1,duration:.5,ease:'power2.out'},1.3)
-    .to(aura2,{opacity:.3,scale:1,duration:.5,ease:'power2.out'},1.3);
-
-  // ═══ 2-3.5s: 连续滑向拖入框特写（不归位） ═══
-  tl.to(win,{scale:2.4,x:-160,y:50,rotateX:-2,rotateY:-4,duration:.45,ease:'power4.inOut'},2.0)
-    .to(edges,{opacity:.5,duration:.08},2.1)
-    .call(()=>showBlur(.12),[],2.15)
+      duration:.2,ease:'power3.out'},1.65)
+    .to(edges,{opacity:0,duration:.35,ease:'power2.in'},1.75)
+    .to(aura1,{opacity:.5,scale:1.1,duration:.5,ease:'power2.out'},1.5)
+    .to(aura2,{opacity:.3,scale:1,duration:.5,ease:'power2.out'},1.5)
+    // 定位说明：这是什么软件
+    .call(()=>showBlur(.15),[],2.0)
     .fromTo(T.t2,{opacity:0,scale:.9,y:10,filter:'blur(6px)'},
-      {opacity:1,scale:1,y:0,filter:'blur(0px)',duration:.35,ease:'power3.out'},2.2)
-    .to(dz,{backgroundColor:'#D6E8E4',borderColor:'#5BA89A',duration:.12,ease:'power3.out'},2.3)
-    .to(dz,{textContent:'已就绪 ✓',color:'#5BA89A',duration:.08},2.6)
-    .to(edges,{opacity:0,duration:.2,ease:'power2.in'},2.9)
-    .call(()=>hideBlur(.15),[],3.0)
-    .to(T.t2,{opacity:0,scale:1.05,y:-10,filter:'blur(5px)',duration:.25,ease:'power3.in'},3.0)
+      {opacity:1,scale:1,y:0,filter:'blur(0px)',duration:.5,ease:'power3.out'},2.1)
+    .call(()=>hideBlur(.2),[],2.7)
+    .to(T.t2,{opacity:0,scale:1.04,y:-10,filter:'blur(5px)',duration:.3,ease:'power3.in'},2.7);
 
-  // ═══ 3.3-5s: 连续滑向替换按钮（从拖入框特写直接位移过去） ═══
-    .to(win,{scale:2.0,x:120,y:80,rotateX:2,rotateY:5,duration:.35,ease:'power4.inOut'},3.3)
-    .call(()=>showBlur(.12),[],3.4)
+  // ═══ 3-4.5s: 特写拖入框 → 拖入即就绪 ═══
+  tl.to(win,{scale:2.4,x:-160,y:50,rotateX:-2,rotateY:-4,duration:.45,ease:'power4.inOut'},3.0)
+    .to(edges,{opacity:.5,duration:.08},3.1)
+    .call(()=>showBlur(.12),[],3.15)
     .fromTo(T.t3,{opacity:0,scale:.9,y:10,filter:'blur(6px)'},
-      {opacity:1,scale:1,y:0,filter:'blur(0px)',duration:.35,ease:'power3.out'},3.45)
-    .fromTo(scan1,{opacity:0,y:'-10%'},{opacity:1,y:'110%',duration:.18,ease:'power4.inOut'},3.5)
-    .to(edges,{opacity:.6,duration:.06},3.6)
-    .to(pf,{width:'100%',duration:.4,ease:'power2.inOut'},3.6)
-    .to(ba,{boxShadow:'0 0 40px rgba(91,168,154,.9),0 0 80px rgba(91,168,154,.5)',
-      scale:1.08,translateZ:25,duration:.12,ease:'power4.out'},3.7)
-    .to(ba,{textContent:'已应用 ✓',duration:.08},4.1)
-    .to(ba,{scale:1,translateZ:10,duration:.12,ease:'power3.out'},4.22)
-    .to(edges,{opacity:0,duration:.2,ease:'power2.in'},4.3)
-    .call(()=>hideBlur(.15),[],4.5)
-    .to(T.t3,{opacity:0,scale:1.05,y:-10,filter:'blur(5px)',duration:.25,ease:'power3.in'},4.5)
+      {opacity:1,scale:1,y:0,filter:'blur(0px)',duration:.45,ease:'power3.out'},3.2)
+    .to(dz,{backgroundColor:'#D6E8E4',borderColor:'#5BA89A',duration:.12,ease:'power3.out'},3.3)
+    .to(dz,{textContent:'已就绪 ✓',color:'#5BA89A',duration:.08},3.7)
+    .to(edges,{opacity:0,duration:.2,ease:'power2.in'},4.0)
+    .call(()=>hideBlur(.15),[],4.1)
+    .to(T.t3,{opacity:0,scale:1.04,y:-10,filter:'blur(5px)',duration:.3,ease:'power3.in'},4.1);
 
-  // ═══ 4.8-6.3s: 拉远到枪包列表区域（连续3D倾斜位移） ═══
-    .to(win,{scale:1.3,x:-80,y:-40,rotateX:5,rotateY:-7,translateZ:-80,
-      duration:.4,ease:'power4.inOut'},4.8)
-    .to(edges,{opacity:.35,duration:.06},4.9)
-    .call(()=>showBlur(.12),[],4.95)
+  // ═══ 4.4-6s: 连续滑向替换按钮 → 毫秒替换 ═══
+  tl.to(win,{scale:2.0,x:120,y:80,rotateX:2,rotateY:5,duration:.35,ease:'power4.inOut'},4.4)
+    .call(()=>showBlur(.12),[],4.5)
     .fromTo(T.t4,{opacity:0,scale:.9,y:10,filter:'blur(6px)'},
-      {opacity:1,scale:1,y:0,filter:'blur(0px)',duration:.35,ease:'power3.out'},5.0)
-    .to('#win .c3 .r',{stagger:{each:.04},borderColor:'#5BA89A',duration:.06,ease:'power3.out'},5.15)
-    .to('#win .c3 .r.ad .dt',{scale:2,duration:.1,ease:'power4.out'},5.35)
-    .to('#win .c3 .r.ad .dt',{scale:1,duration:.1,ease:'power3.out'},5.45)
-    .to('#win .c3 .r.ad',{backgroundColor:'#D6E8E4',duration:.12,ease:'power2.out'},5.48)
-    .to(edges,{opacity:0,duration:.15},5.8)
-    .call(()=>hideBlur(.15),[],5.9)
-    .to(T.t4,{opacity:0,scale:1.05,y:-10,filter:'blur(5px)',duration:.25,ease:'power3.in'},5.9)
+      {opacity:1,scale:1,y:0,filter:'blur(0px)',duration:.45,ease:'power3.out'},4.55)
+    .fromTo(scan1,{opacity:0,y:'-10%'},{opacity:1,y:'110%',duration:.18,ease:'power4.inOut'},4.6)
+    .to(edges,{opacity:.6,duration:.06},4.7)
+    .to(pf,{width:'100%',duration:.4,ease:'power2.inOut'},4.7)
+    .to(ba,{boxShadow:'0 0 40px rgba(91,168,154,.9),0 0 80px rgba(91,168,154,.5)',
+      scale:1.08,translateZ:25,duration:.12,ease:'power4.out'},4.8)
+    .to(ba,{textContent:'已应用 ✓',duration:.08},5.2)
+    .to(ba,{scale:1,translateZ:10,duration:.12,ease:'power3.out'},5.32)
+    .to(edges,{opacity:0,duration:.2,ease:'power2.in'},5.4)
+    .call(()=>hideBlur(.15),[],5.6)
+    .to(T.t4,{opacity:0,scale:1.04,y:-10,filter:'blur(5px)',duration:.3,ease:'power3.in'},5.6);
 
-  // ═══ 6.2-8s: 窗口消失（悬念高潮）→ 大标题炸入 → 窗口远处浮现 ═══
-    .to(win,{scale:1.3,opacity:0,rotateX:10,translateZ:-400,duration:.3,ease:'power3.in'},6.2)
-    .to(aura1,{opacity:1,scale:1.4,duration:.5,ease:'power2.out'},6.2)
-    .call(()=>showBlur(.25),[],6.55)
-    .fromTo(T.t5,{opacity:0,scale:1.2,filter:'blur(10px)'},
-      {opacity:1,scale:1,filter:'blur(0px)',duration:.5,ease:'power4.out'},6.6)
-    // 窗口半透明远处浮现（像幻影）
-    .to(win,{opacity:.2,scale:.5,rotateX:-6,rotateY:3,translateZ:-250,duration:.7,ease:'power2.out'},7.0)
-    .to(edges,{opacity:.1,duration:.7},7.3)
-    .call(()=>hideBlur(.35),[],7.8)
-    .to(T.t5,{opacity:0,scale:1.06,filter:'blur(7px)',duration:.35,ease:'power3.in'},7.8)
-    .to(edges,{opacity:0,duration:.25},7.8)
+  // ═══ 5.9-7.5s: 拉远到枪包列表 → 增量同步 ═══
+  tl.to(win,{scale:1.3,x:-80,y:-40,rotateX:5,rotateY:-7,translateZ:-80,
+    duration:.4,ease:'power4.inOut'},5.9)
+    .to(edges,{opacity:.35,duration:.06},6.0)
+    .call(()=>showBlur(.12),[],6.05)
+    .fromTo(T.t5,{opacity:0,scale:.9,y:10,filter:'blur(6px)'},
+      {opacity:1,scale:1,y:0,filter:'blur(0px)',duration:.45,ease:'power3.out'},6.1)
+    .to('#win .c3 .r',{stagger:{each:.04},borderColor:'#5BA89A',duration:.06,ease:'power3.out'},6.25)
+    .to('#win .c3 .r.ad .dt',{scale:2,duration:.1,ease:'power4.out'},6.45)
+    .to('#win .c3 .r.ad .dt',{scale:1,duration:.1,ease:'power3.out'},6.55)
+    .to('#win .c3 .r.ad',{backgroundColor:'#D6E8E4',duration:.12,ease:'power2.out'},6.58)
+    .to(edges,{opacity:0,duration:.15},6.9)
+    .call(()=>hideBlur(.15),[],7.0)
+    .to(T.t5,{opacity:0,scale:1.04,y:-10,filter:'blur(5px)',duration:.3,ease:'power3.in'},7.0);
 
-  // ═══ 8.2-9s: 版本号极速闪现 ═══
-    .call(()=>showBlur(.1),[],8.2)
-    .fromTo(T.t6,{opacity:0,scale:2,filter:'blur(12px)'},
-      {opacity:1,scale:1,filter:'blur(0px)',duration:.2,ease:'power4.out'},8.23)
-    .to(T.t6,{opacity:0,scale:.5,filter:'blur(10px)',duration:.15,ease:'power4.in'},8.6)
-    .call(()=>hideBlur(.2),[],8.8)
+  // ═══ 7.3-8.8s: 实时校验（列表四色闪烁） ═══
+  tl.to(win,{scale:1.5,x:60,y:20,rotateX:3,rotateY:3,translateZ:0,
+    duration:.3,ease:'power4.inOut'},7.3)
+    .call(()=>showBlur(.12),[],7.45)
+    .fromTo(T.t6,{opacity:0,scale:.9,y:10,filter:'blur(6px)'},
+      {opacity:1,scale:1,y:0,filter:'blur(0px)',duration:.45,ease:'power3.out'},7.5)
+    // 列表行依次按状态色闪烁
+    .to('#win .c3 .r.ok .dt',{scale:1.5,duration:.1,ease:'power4.out'},7.7)
+    .to('#win .c3 .r.ok .dt',{scale:1,duration:.1,ease:'power3.out'},7.8)
+    .to('#win .c3 .r.ad .dt',{scale:1.5,duration:.1,ease:'power4.out'},7.85)
+    .to('#win .c3 .r.ad .dt',{scale:1,duration:.1,ease:'power3.out'},7.95)
+    .to('#win .c3 .r.md .dt',{scale:1.5,duration:.1,ease:'power4.out'},8.0)
+    .to('#win .c3 .r.md .dt',{scale:1,duration:.1,ease:'power3.out'},8.1)
+    .call(()=>hideBlur(.15),[],8.4)
+    .to(T.t6,{opacity:0,scale:1.04,y:-10,filter:'blur(5px)',duration:.3,ease:'power3.in'},8.4);
 
-  // ═══ 9-11s: 结尾 ═══
-    .to(win,{scale:.3,opacity:.06,rotateX:15,translateZ:-700,duration:.4,ease:'power2.in'},9.0)
-    .to(aura1,{opacity:.6,scale:1.2,duration:.5,ease:'power2.out'},9.0)
-    .call(()=>showBlur(.25),[],9.4)
-    .fromTo(T.t7,{opacity:0,scale:.9,filter:'blur(6px)'},
-      {opacity:1,scale:1,filter:'blur(0px)',duration:.4,ease:'power4.out'},9.5)
-    .to(parts,{stagger:{each:.002},r:3,a:.6,duration:.4,ease:'power3.out'},9.5)
-    .to(parts,{stagger:{each:.002},r:0,a:0,duration:.4,ease:'power3.in'},10.1)
-    .to(aura1,{opacity:0,duration:.5,ease:'power2.in'},10.4)
-    .to(aura2,{opacity:0,duration:.5,ease:'power2.in'},10.4)
-    .call(()=>hideBlur(.25),[],10.8)
-    .to(rep,{opacity:1,duration:.2},11.0);
+  // ═══ 8.7-10.5s: 窗口消失 → 定格升华 ═══
+  tl.to(win,{scale:1.3,opacity:0,rotateX:10,translateZ:-400,duration:.35,ease:'power3.in'},8.7)
+    .to(aura1,{opacity:1,scale:1.4,duration:.5,ease:'power2.out'},8.7)
+    .call(()=>showBlur(.3),[],9.1)
+    .fromTo(T.t7,{opacity:0,scale:1.2,filter:'blur(10px)'},
+      {opacity:1,scale:1,filter:'blur(0px)',duration:.6,ease:'power4.out'},9.15)
+    .to(win,{opacity:.2,scale:.5,rotateX:-6,rotateY:3,translateZ:-250,duration:.7,ease:'power2.out'},9.5)
+    .to(edges,{opacity:.1,duration:.7},9.8)
+    .call(()=>hideBlur(.35),[],10.3)
+    .to(T.t7,{opacity:0,scale:1.05,filter:'blur(7px)',duration:.35,ease:'power3.in'},10.3)
+    .to(edges,{opacity:0,duration:.25},10.3);
+
+  // ═══ 10.7-11.5s: 版本号闪现 ═══
+  tl.call(()=>showBlur(.1),[],10.7)
+    .fromTo(T.t8,{opacity:0,scale:2,filter:'blur(12px)'},
+      {opacity:1,scale:1,filter:'blur(0px)',duration:.2,ease:'power4.out'},10.73)
+    .to(T.t8,{opacity:0,scale:.5,filter:'blur(10px)',duration:.15,ease:'power4.in'},11.1)
+    .call(()=>hideBlur(.2),[],11.3);
+
+  // ═══ 11.5-13s: 结尾 · Pulses0 Studio ═══
+  tl.to(win,{scale:.3,opacity:.06,rotateX:15,translateZ:-700,duration:.4,ease:'power2.in'},11.5)
+    .to(aura1,{opacity:.6,scale:1.2,duration:.5,ease:'power2.out'},11.5)
+    .call(()=>showBlur(.25),[],11.9)
+    .fromTo(T.t9,{opacity:0,scale:.9,filter:'blur(6px)'},
+      {opacity:1,scale:1,filter:'blur(0px)',duration:.5,ease:'power4.out'},12.0)
+    .to(parts,{stagger:{each:.002},r:3,a:.6,duration:.4,ease:'power3.out'},12.0)
+    .to(parts,{stagger:{each:.002},r:0,a:0,duration:.4,ease:'power3.in'},12.6)
+    .to(aura1,{opacity:0,duration:.5,ease:'power2.in'},12.9)
+    .to(aura2,{opacity:0,duration:.5,ease:'power2.in'},12.9)
+    .call(()=>hideBlur(.25),[],13.3)
+    .to(rep,{opacity:1,duration:.2},13.5);
 
   return tl;
 }

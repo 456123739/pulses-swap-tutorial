@@ -200,7 +200,9 @@
   #explorer {
     border: none !important;
     border-radius: var(--r-window) !important;
-    background: linear-gradient(160deg, rgba(255,255,255,.76), rgba(244,247,248,.60)) !important;
+    /* 原来 .76/.60 太透 —— 压在深色场景上整体发灰。
+       资源管理器是"白色文件管理器"，底色必须接近纯白。 */
+    background: linear-gradient(160deg, rgba(255,255,255,.975), rgba(250,252,252,.955)) !important;
     backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat)) brightness(var(--glass-bright));
     -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat)) brightness(var(--glass-bright));
     box-shadow:
@@ -2870,8 +2872,9 @@ const APP_MODEL = {
     tl.add(() => txtIn(t7a, .9, 0), 91.35);
     tl.add(() => txtIn(t7b, .8, .22), 91.95);
     tl.add(() => txtIn(t7c, .8, .34), 92.55);
-    tl.to(cam, { scale: 0.4, tz: -260, rotX: 14, rotY: -8, duration: 3.2, ease: 'appleOut', onUpdate: applyCam, onComplete: applyCam }, 88.2);
-    tl.to(winEl, { opacity: 0.25, duration: 2.2, ease: 'appleSoft' }, 88.6);
+    // 结尾让 UI 窗口整体滑出画面右侧，只留署名 —— 画面彻底交给文字
+    tl.to(cam, { scale: 0.38, tx: 1460, tz: -300, rotX: 12, rotY: -16, duration: 3.4, ease: 'appleOut', onUpdate: applyCam, onComplete: applyCam }, 88.2);
+    tl.to(winEl, { opacity: 0, duration: 1.8, ease: 'appleIn' }, 88.9);
     // 三行同时在场、一起退场，收在音乐淡出的空隙里
     // 注意：全片结束前都不要解除 blur-top-active，否则退场中的字幕后面会闪回那团黑
     tl.add(() => { txtOut(t7a, .7, 0); txtOut(t7b, .7, .08); txtOut(t7c, .7, .16); blurOff(); }, 95.90);

@@ -663,7 +663,7 @@
         <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
         播放宣传片
       </button>
-      <div class="g-note">含同步背景音乐 · 3 Strikes</div>
+      <div class="g-note">点击屏幕任意位置开始 · 含同步背景音乐</div>
     </div>
   </div>
   <audio id="bgm" preload="auto"></audio>
@@ -2360,14 +2360,14 @@ const APP_MODEL = {
     // 背景的"憋"一直保持到这一拍才松掉
     tl.add(() => { patternsOff(); chaosOff(); }, ANCHOR_VOCAL);
     tl.to('#patterns', { filter: 'brightness(1)', duration: 1.0, ease: 'appleSoft' }, ANCHOR_VOCAL);
-    tl.to('.aura', { opacity: 1, scale: 1.4, duration: 1.2, ease: 'appleSpring' }, BEATP(31) - .15);
-    tl.to(winEl, { opacity: 1, duration: 1.1, ease: 'appleSoft' }, BEATP(31));
+    tl.to('.aura', { opacity: 1, scale: 1.4, duration: .75, ease: 'appleSpring' }, BEATP(31) - .12);
+    tl.to(winEl, { opacity: 1, duration: .55, ease: 'appleOut' }, BEATP(31));
 
     const t0 = makeText({ big: true, size: 66, html: 'PULSES{a}SWAP{/a}', color: '#f2faf7', yOffset: 0 });
     t0.style.textShadow = '0 0 50px rgba(127,212,193,.5)';
     // 严格落在第 31 拍（主唱进入的那一拍），绝不提前
     tl.add(() => txtIn(t0, .45, 0), ANCHOR_VOCAL);
-    tl.to(cam, { rotX: 10, rotY: -8, scale: 0.85, tz: -60, duration: 1.4, ease: 'appleOut', onUpdate: applyCam, onComplete: applyCam }, ANCHOR_VOCAL);
+    tl.to(cam, { rotX: 10, rotY: -8, scale: 0.85, tz: -60, duration: .85, ease: 'appleOut', onUpdate: applyCam, onComplete: applyCam }, ANCHOR_VOCAL);
     tl.add(() => { txtOut(t0, .6, 0); blurOff(); }, BEATP(38));
 
     const tEng = makeText({ big: true, size: 42, html: '枪包管理引擎 {a}PULSE ENGINE{/a}', color: '#f2faf7', yOffset: -46 });
@@ -2632,7 +2632,47 @@ const APP_MODEL = {
       renderer.addListItem('preset_list', { text: '队友的 PVP 预设', bg: 'transparent' });
       renderer.setLabel('loading_label', '已导入');
     }, BEATP(131));
-    tl.add(() => { txtOut(t8c, .5, 0); renderer.setLabel('loading_label', ''); }, BEATP(137) - .25);
+    tl.add(() => { txtOut(t8c, .5, 0); renderer.setLabel('loading_label', ''); }, BEATP(131));
+
+    // —— 导出这一段顺带点一下"校验"：导出前先扫一遍，缺漏立刻标出来 ——
+    const t8d = makeText({ size: 28, html: '导出前自动{a}校验{/a} — 所有缺漏，瞬间探明', color: '#e4f0ea' });
+    tl.add(() => txtIn(t8d, .55, 0), BEATP(131));
+    // 镜头推到枪包列表，把"错误 → 正确"的过程演出来
+    const _gpRow = (i) => { const l = renderer.get('gunpack_list'); return l ? l.children[i] : null; };
+    tl.to(cam, Object.assign(focusCam('gunpack_list', 1.62, 4, -6, 60),
+      { duration: 1.0, ease: 'appleOut', onUpdate: applyCam, onComplete: applyCam }), BEATP(131));
+    // 先亮出问题：第 2、4 行缺漏 / 版本不符
+    tl.add(() => {
+      [1, 3].forEach(i => {
+        const r = _gpRow(i); if (!r) return;
+        r.style.background = 'rgba(196,92,92,.20)';
+        r.style.color = T.error;
+      });
+    }, BEATP(131));
+    // 扫描线依次扫过
+    tl.add(() => {
+      const l = renderer.get('gunpack_list'); if (!l) return;
+      [...l.children].forEach((row, i) => {
+        gsap.fromTo(row, { boxShadow: '0 0 0 0 rgba(127,212,193,0)' },
+          { boxShadow: '0 0 0 2px rgba(127,212,193,.75)', duration: .14, delay: i * .06,
+            yoyo: true, repeat: 1, ease: 'appleSoft' });
+      });
+    }, BEATP(131));
+    // 缺漏逐个补上 → 变正确
+    tl.add(() => {
+      const r = _gpRow(1); if (!r) return;
+      r.style.background = T.statusAddedBg; r.style.color = T.statusAdded;
+      gsap.fromTo(r, { scale: 1 }, { scale: 1.05, duration: .13, yoyo: true, repeat: 1, ease: 'appleSoft' });
+      renderer.appendLog('log_box', '  [修正] ak47_redline.tar.gz → 补齐缺失纹理', '#e6cc8e');
+    }, BEATP(133));
+    tl.add(() => {
+      const r = _gpRow(3); if (!r) return;
+      r.style.background = T.statusAddedBg; r.style.color = T.statusAdded;
+      gsap.fromTo(r, { scale: 1 }, { scale: 1.05, duration: .13, yoyo: true, repeat: 1, ease: 'appleSoft' });
+      renderer.appendLog('log_box', '  [修正] m4a1_storm.tar.gz → 版本回退到 v2.1.7', '#e6cc8e');
+    }, BEATP(135));
+    tl.add(() => renderer.appendLog('log_box', '  校验完成 · 5/5 通过，缺漏 0', '#7fd4c1'), BEATP(136));
+    tl.add(() => { txtOut(t8d, .5, 0); }, BEATP(137) - .25);
 
     // —— ② 版本号 + 日志：出问题能定位 (57.0 → 66.5) ——
     const t9a = makeText({ size: 30, html: '每个预设{a}独立版本号{/a} — 不会被别的服覆盖', color: '#e4f0ea' });
@@ -2678,17 +2718,18 @@ const APP_MODEL = {
     tl.add(() => { txtOut(t10a, .45, 0); txtOut(t10b, .45, .1); mcHide(); }, BEATP(185) - .2);
 
     // —— ④ 性能与信任 (76.5 → 88.0) ——
-    const t11a = makeText({ big: true, size: 62, gold: true, html: '0.84s', yOffset: -34 });
-    const t11b = makeText({ size: 24, html: '手动替换：平均 3 分钟以上', color: '#c2d6d2', yOffset: 54 });
-    tl.add(() => { txtIn(t11a, .7, 0); blurOn(); }, BEATP(185));
+    const t11a = makeText({ big: true, size: 78, gold: true, html: '0.84s', yOffset: -30 });
+    const t11b = makeText({ size: 25, html: '比手动替换快 <b>20 倍</b> 以上', color: '#c2d6d2', yOffset: 68 });
+    // 这一段不再需要展示 UI，背景直接上高斯模糊，只留大字
+    tl.add(() => { txtIn(t11a, .6, 0); blurOn(); blurTopOn(); }, BEATP(185));
     tl.add(() => txtIn(t11b, .6, .18), BEATP(185) + .25);
-    tl.add(() => { txtOut(t11a, .5, 0); txtOut(t11b, .5, .1); blurOff(); }, BEATP(197) - .2);
+    tl.add(() => { txtOut(t11a, .5, 0); txtOut(t11b, .5, .1); }, BEATP(197) - .2);   // 模糊保持到本章结束
 
     const t11c = makeText({ size: 30, html: '数据{a}全部在本地{/a} — 不上传、不联网', color: '#e4f0ea' });
     const t11d = makeText({ size: 22, html: '换服、重装、回滚，随时切回来', color: '#c2d6d2', yOffset: 58 });
     tl.add(() => txtIn(t11c, .6, 0), BEATP(197));
     tl.add(() => txtIn(t11d, .55, .16), BEATP(197) + .3);
-    tl.add(() => { txtOut(t11c, .45, 0); txtOut(t11d, .45, .1); }, BEATP(209) - .2);
+    tl.add(() => { txtOut(t11c, .45, 0); txtOut(t11d, .45, .1); blurTopOff(); }, BEATP(209) - .2);
 
     // ═══════════ ACT 5: 定格升华 (88.0s → 96.6s) ═══════════
     // 结尾落在歌曲 93→97.5s 的分解段里：94.5→96.6s 几乎全静音，音乐淡出时画面只剩署名
@@ -2831,11 +2872,14 @@ const APP_MODEL = {
     startSync();
   }
 
+  // 整屏任意位置点击都能开始 —— 按钮只是视觉引导，不再是唯一入口
   gateBtn.addEventListener('click', startShow);
-  // 兜底：整张卡片任意位置点击/回车都能开始
-  gateEl.addEventListener('click', (e) => { if (e.target === gateEl) startShow(); });
+  gateEl.addEventListener('click', startShow);
+  // 捕获阶段兜底：连卡片、文字、留白处都算
+  document.addEventListener('click', () => { if (!showStarted) startShow(); }, true);
+  // 任意键也能开始
   window.addEventListener('keydown', (e) => {
-    if (!showStarted && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); startShow(); }
+    if (!showStarted) { e.preventDefault(); startShow(); }
   });
 
   // 静音切换

@@ -26,6 +26,58 @@
     background: radial-gradient(circle, rgba(123,157,201,.20), transparent 70%); }
 
   /* blur overlay behind big text moments */
+  /* ===== 现状铺垫：背景图案动画层 ===== */
+  #patterns { position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: 0; overflow: hidden; }
+  /* 透视地板网格 */
+  .p-grid {
+    position: absolute; left: -60%; right: -60%; bottom: -10%; height: 85%;
+    background-image:
+      linear-gradient(rgba(127,212,193,.30) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(127,212,193,.30) 1px, transparent 1px);
+    background-size: 64px 64px;
+    transform: perspective(420px) rotateX(66deg);
+    transform-origin: bottom center;
+    animation: gridFlow 2.4s linear infinite;
+    mask-image: linear-gradient(to top, #000 12%, transparent 78%);
+    -webkit-mask-image: linear-gradient(to top, #000 12%, transparent 78%);
+  }
+  @keyframes gridFlow { to { background-position: 0 64px, 0 0; } }
+  /* 透视天花板网格（对称，形成包围感） */
+  .p-grid-top {
+    position: absolute; left: -60%; right: -60%; top: -10%; height: 70%;
+    background-image:
+      linear-gradient(rgba(123,157,201,.22) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(123,157,201,.22) 1px, transparent 1px);
+    background-size: 64px 64px;
+    transform: perspective(420px) rotateX(-66deg);
+    transform-origin: top center;
+    animation: gridFlowTop 3.2s linear infinite;
+    mask-image: linear-gradient(to bottom, #000 12%, transparent 74%);
+    -webkit-mask-image: linear-gradient(to bottom, #000 12%, transparent 74%);
+  }
+  @keyframes gridFlowTop { to { background-position: 0 -64px, 0 0; } }
+  /* 扫描线 */
+  .p-scan {
+    position: absolute; left: 0; width: 100%; height: 3px;
+    background: linear-gradient(90deg, transparent, rgba(127,212,193,.85), transparent);
+    box-shadow: 0 0 30px rgba(127,212,193,.6);
+    opacity: 0;
+  }
+  /* 同心脉冲环 */
+  .p-rings { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+  .p-rings i {
+    position: absolute; border-radius: 50%;
+    border: 1px solid rgba(127,212,193,.55);
+    width: 240px; height: 240px; opacity: 0;
+  }
+  /* 垂直数据流 */
+  .p-streams { position: absolute; inset: 0; }
+  .p-streams b {
+    position: absolute; top: -20%; width: 1px; height: 18%;
+    background: linear-gradient(180deg, transparent, rgba(127,212,193,.7), transparent);
+    opacity: .5;
+  }
+
   #blur {
     position: fixed; inset: 0; z-index: 5; pointer-events: none;
     backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
@@ -95,6 +147,15 @@
 </head>
 <body>
   <canvas id="cv"></canvas>
+  <div id="patterns">
+    <div class="p-grid"></div>
+    <div class="p-grid-top"></div>
+    <div class="p-streams" id="pStreams"></div>
+    <div class="p-rings">
+      <i id="pRing1"></i><i id="pRing2"></i><i id="pRing3"></i>
+    </div>
+    <div class="p-scan" id="pScan"></div>
+  </div>
   <div class="aura a1"></div>
   <div class="aura a2"></div>
   <div class="aura a3"></div>
@@ -959,6 +1020,47 @@ const APP_MODEL = {
     return gsap.to(cam, Object.assign({ onComplete: applyCam, onUpdate: applyCam }, props, o));
   }
 
+  // ---- 背景图案层（现状铺垫 / 蓄势） ----
+  const patterns = document.getElementById('patterns');
+  const pScan = document.getElementById('pScan');
+  const pRings = [document.getElementById('pRing1'), document.getElementById('pRing2'), document.getElementById('pRing3')];
+  (function buildStreams() {
+    const host = document.getElementById('pStreams');
+    for (let i = 0; i < 26; i++) {
+      const b = document.createElement('b');
+      b.style.left = (Math.random() * 100) + '%';
+      b.style.animation = 'streamFall ' + (2.2 + Math.random() * 2.6) + 's linear ' + (Math.random() * 2) + 's infinite';
+      host.appendChild(b);
+    }
+    // 关键帧只需注入一次
+    if (!document.getElementById('streamKF')) {
+      const st = document.createElement('style');
+      st.id = 'streamKF';
+      st.textContent = '@keyframes streamFall { from { transform: translateY(0); } to { transform: translateY(760%); } }';
+      document.head.appendChild(st);
+    }
+  })();
+
+  function patternsOn() {
+    gsap.to(patterns, { opacity: 1, duration: 1.6, ease: 'power2.out' });
+  }
+  function patternsOff() {
+    gsap.to(patterns, { opacity: 0, duration: 1.4, ease: 'power2.inOut' });
+  }
+  // 扫描线往复扫动
+  function scanSweep() {
+    gsap.fromTo(pScan, { top: '-4%', opacity: 0 },
+      { top: '104%', opacity: 1, duration: 2.2, ease: 'power1.inOut',
+        onComplete: () => gsap.set(pScan, { opacity: 0 }) });
+  }
+  // 脉冲环扩散
+  function ringPulse(scaleFrom, dur, delay) {
+    gsap.fromTo(pRings,
+      { scale: scaleFrom, opacity: 0 },
+      { scale: 2.6, opacity: .0, duration: dur, delay: delay || 0, ease: 'power2.out',
+        onStart: () => gsap.set(pRings, { opacity: .55 }) });
+  }
+
   const blurOverlay = document.getElementById('blur');
   function blurOn() { gsap.to(blurOverlay, { opacity: 1, duration: .6, ease: 'power2.out' }); }
   function blurOff() { gsap.to(blurOverlay, { opacity: 0, duration: .6, ease: 'power2.in' }); }
@@ -985,10 +1087,33 @@ const APP_MODEL = {
     Object.assign(cam, { rotX: 18, rotY: -22, rotZ: 0, scale: 0.55, tz: -300, tx: 0, ty: 0 });
     applyCam();
     txtLayer.innerHTML = '';
+    bar.style.width = '0%';
+    repBtn.style.opacity = '0';
+    // 「最佳方案」登场前，窗口完全不出现
+    winEl.style.opacity = '0';
+    gsap.set(winEl, { opacity: 0 });
+    // 图案层复位（现状陈述阶段启用）
+    gsap.set(patterns, { opacity: 0, filter: 'brightness(1)' });
+    document.querySelectorAll('.p-grid,.p-grid-top').forEach(g => g.style.backgroundSize = '64px 64px');
     tl = gsap.timeline({ onComplete: () => { repBtn.style.opacity = '1'; } });
 
     // ═══════════ ACT 1: 现状 — 痛点 (0-14s) ═══════════
     // 无产品 UI，纯黑幕 + 冷灰文字 + 压迫光晕，讲"换枪包"的痛苦
+
+    // 现状铺垫：背景图案开始蓄势
+    tl.add(() => patternsOn(), 0);
+    tl.add(() => scanSweep(), 0.3);
+    tl.add(() => scanSweep(), 4.4);
+    tl.add(() => scanSweep(), 8.2);
+    tl.add(() => scanSweep(), 11.8);
+    tl.add(() => ringPulse(0.4, 3.2, 0), 0.5);
+    tl.add(() => ringPulse(0.5, 3.0, 0), 4.0);
+    tl.add(() => ringPulse(0.6, 3.0, 0), 8.0);
+    tl.add(() => ringPulse(0.7, 2.6, 0), 11.4);
+    // 图案随痛点数增多而增强
+    tl.to('.p-grid', { backgroundSize: '48px 48px', duration: 7, ease: 'power1.inOut' }, 3.5);
+    tl.to('.p-grid-top', { backgroundSize: '48px 48px', duration: 7, ease: 'power1.inOut' }, 3.5);
+    tl.to('#patterns', { filter: 'brightness(1.35)', duration: 6, ease: 'power2.in' }, 7.5);
 
     const p1 = makeText({ size: 30, html: 'Tacz 玩家都懂', color: '#8a9ea0' });
     tl.add(() => { txtIn(p1, 1.0, 0); blurOn(); }, 0.6);
@@ -1024,9 +1149,13 @@ const APP_MODEL = {
 
     const t0 = makeText({ big: true, size: 66, html: 'PULSES{a}SWAP{/a}', color: '#f2faf7', yOffset: 0 });
     t0.style.textShadow = '0 0 50px rgba(127,212,193,.5)';
+    // 最佳方案登场：图案淡出，窗口首次亮相
+    tl.add(() => patternsOff(), 13.9);
+    tl.to('#patterns', { filter: 'brightness(1)', duration: 1.2, ease: 'power2.out' }, 13.9);
     tl.add(() => txtIn(t0, 1.0, 0), 14.2);
     tl.to('.aura', { opacity: 1, scale: 1.4, duration: 2, ease: 'power3.out' }, 14.0);
-    // 光晕爆裂 + 窗口从深处冲出（最佳选择登场）
+    // 最佳选择登场：窗口从深处冲出（首次可见）
+    tl.to(winEl, { opacity: 1, duration: 1.4, ease: 'power2.out' }, 14.2);
     tl.to(cam, { rotX: 10, rotY: -8, scale: 0.85, tz: -60, duration: 2.2, ease: 'power4.out', onUpdate: applyCam, onComplete: applyCam }, 14.4);
     tl.add(() => { txtOut(t0, .8, 0); blurOff(); }, 16.4);
 
@@ -1141,7 +1270,10 @@ const APP_MODEL = {
       renderer.setLabel('gunpack_count', '共 0 个枪包');
       renderer.setButtonEnabled('btn_open_tacz', false);
       renderer.setButtonEnabled('btn_refresh_gun', false);
-      winEl.style.opacity = 1;
+      winEl.style.opacity = 0;
+      gsap.set(winEl, { opacity: 0 });
+      gsap.set(patterns, { opacity: 0, filter: 'brightness(1)' });
+      document.querySelectorAll('.p-grid,.p-grid-top').forEach(g => g.style.backgroundSize = '64px 64px');
       const auras = document.querySelectorAll('.aura'); auras.forEach(a => a.style.opacity = 0);
     } catch (e) {}
     build();

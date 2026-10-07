@@ -655,14 +655,18 @@
     content: '';
     position: absolute;
     left: 50%; top: 50%;
-    width: 128%; height: 250%;
+    /* 衬底只做"轻微压暗"，不做黑块。
+       可读性主要由 .txt 自身的多层 text-shadow（字形描边）承担 ——
+       字形描边是贴着笔画走的，衬底是大面积色块，两者叠加等于重复加固，
+       读起来就像给字幕糊了一层黑滤镜。 */
+    width: 118%; height: 185%;
     transform: translate(-50%, -50%);
     background: radial-gradient(ellipse at center,
-      rgba(2,4,5,.80) 0%,
-      rgba(2,4,5,.62) 30%,
-      rgba(2,4,5,.30) 56%,
-      transparent 74%);
-    filter: blur(8px);
+      rgba(2,4,5,.34) 0%,
+      rgba(2,4,5,.20) 32%,
+      rgba(2,4,5,.07) 58%,
+      transparent 76%);
+    filter: blur(14px);
     z-index: -1;
     pointer-events: none;
   }

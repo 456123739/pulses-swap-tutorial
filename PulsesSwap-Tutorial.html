@@ -1806,9 +1806,20 @@ async function selectPresetAndPreview(e, idx, name, version, source) {
  * ============================================================ */
 const PLAYER_SCENES = [
 
-  { title: '开场 · 认识 Pulses Swap', part: 'player', run: async e => {
+  { title: '前景提要', part: 'player', run: async e => {
     await resetMainUI(e);
     await e.say('<big>Pulses Swap</big><br><dim>Tacz 枪包一键切换工具</dim>', 2000);
+    await e.hideCaption();
+    await e.say('本软件适合放置在你的 <b>MC 根目录（.minecraft）</b> 附近<br><dim>以获得最高速度</dim>', 3200);
+    await e.hideCaption();
+    await e.say('完成初始化后，<b>不要移动它的位置</b>', 2600);
+    await e.hideCaption();
+    await e.say('本软件仍处于 <b>Beta</b> 状态，可能有不稳定<br><dim>请关注本项目更新信息</dim>', 3200);
+    await e.hideCaption();
+  }},
+
+  { title: '开场 · 认识 Pulses Swap', part: 'player', run: async e => {
+    await resetMainUI(e);
     await e.say('玩家只需要会一个字 —— <b>拖</b>', 1800);
     await e.hideCaption();
   }},

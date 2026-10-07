@@ -126,6 +126,93 @@
     height: 1px; opacity: 0; will-change: opacity, transform;
   }
 
+  /* ===== Minecraft Java 版窗口 ===== */
+  #mc {
+    position: fixed; right: 3vw; top: 50%;
+    width: 430px; z-index: 32; opacity: 0; pointer-events: none;
+    transform-origin: right center;
+    border-radius: 6px; overflow: hidden;
+    background: #1d1d1f;
+    border: 2px solid #55555a;
+    box-shadow: 0 30px 90px rgba(0,0,0,.75), inset 0 0 0 1px rgba(255,255,255,.06);
+    font-family: 'SF Pro Display','Inter','Microsoft YaHei UI',sans-serif;
+  }
+  #mc .mc-title {
+    height: 34px; display: flex; align-items: center; gap: 9px; padding: 0 12px;
+    background: linear-gradient(#3a3a3e, #2a2a2e);
+    border-bottom: 2px solid #16161a;
+    font-size: 12px; color: #d8d8dc; letter-spacing: .4px;
+  }
+  #mc .mc-title .mc-dots { display: flex; gap: 5px; }
+  #mc .mc-title .mc-dots i { width: 9px; height: 9px; border-radius: 50%; display: block; }
+  #mc .mc-title .mc-dots i:nth-child(1) { background: #e85b5b; }
+  #mc .mc-title .mc-dots i:nth-child(2) { background: #e8b93e; }
+  #mc .mc-title .mc-dots i:nth-child(3) { background: #5bbf6a; }
+  #mc .mc-body {
+    padding: 14px;
+    background:
+      linear-gradient(rgba(0,0,0,.42), rgba(0,0,0,.42)),
+      repeating-linear-gradient(45deg, #2f2f33 0 6px, #34343a 6px 12px);
+  }
+  #mc .mc-head {
+    font-size: 15px; color: #f0f0f2; letter-spacing: 1px; margin-bottom: 10px;
+    text-shadow: 2px 2px 0 rgba(0,0,0,.85);
+  }
+  #mc .mc-sub { font-size: 11px; color: #9a9aa2; margin-bottom: 12px; letter-spacing: .3px; }
+  #mc .mc-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 10px; margin-bottom: 6px;
+    background: rgba(0,0,0,.34);
+    border: 2px solid #4a4a50;
+    transition: border-color .2s, background .2s;
+  }
+  #mc .mc-row.connected { border-color: #5bbf6a; background: rgba(60,140,80,.20); }
+  #mc .mc-row.sel { border-color: #c9c9d2; background: rgba(255,255,255,.10); }
+  #mc .mc-row .mc-ico {
+    width: 34px; height: 34px; flex-shrink: 0;
+    background: #3c3c42; border: 2px solid #55555c;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #mc .mc-row .mc-info { flex: 1; min-width: 0; }
+  #mc .mc-row .mc-name { font-size: 13px; color: #f2f2f4; letter-spacing: .3px; }
+  #mc .mc-row .mc-motd { font-size: 11px; color: #93a093; margin-top: 2px; }
+  #mc .mc-row .mc-right { text-align: right; flex-shrink: 0; }
+  #mc .mc-row .mc-players { font-size: 11px; color: #b8b8c0; }
+  #mc .mc-row .mc-ping { display: flex; gap: 2px; justify-content: flex-end; margin-top: 4px; }
+  #mc .mc-row .mc-ping i { width: 3px; display: block; background: #4a4a50; }
+  #mc .mc-row .mc-ping i:nth-child(1) { height: 4px; } 
+  #mc .mc-row .mc-ping i:nth-child(2) { height: 7px; }
+  #mc .mc-row .mc-ping i:nth-child(3) { height: 10px; }
+  #mc .mc-row .mc-ping i:nth-child(4) { height: 13px; }
+  #mc .mc-row .mc-ping i:nth-child(5) { height: 16px; }
+  #mc .mc-row .mc-ping.g i:nth-child(-n+4) { background: #5bbf6a; }
+  #mc .mc-row .mc-ping.y i:nth-child(-n+3) { background: #e8b93e; }
+  #mc .mc-foot { display: flex; gap: 8px; margin-top: 12px; }
+  #mc .mc-btn {
+    flex: 1; height: 34px; border: 2px solid #6a6a72;
+    background: linear-gradient(#5a5a62, #44444c);
+    color: #f0f0f2; font-size: 12px; letter-spacing: .5px;
+    font-family: inherit; cursor: default;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.16), 0 2px 0 rgba(0,0,0,.5);
+    transition: background .18s, border-color .18s, transform .12s;
+  }
+  #mc .mc-btn.hot { border-color: #7fd4c1; background: linear-gradient(#4a8f86, #356a63); }
+  #mc .mc-btn-ghost { background: linear-gradient(#3a3a40, #2c2c32); }
+  /* 覆盖层：加载 / 状态 */
+  #mc .mc-overlay {
+    position: absolute; inset: 0; z-index: 3;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+    background: rgba(8,8,10,.88); opacity: 0; pointer-events: none;
+    -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
+  }
+  #mc .mc-overlay.on { opacity: 1; }
+  #mc .mc-progress {
+    width: 62%; height: 12px; background: #1a1a1e; border: 2px solid #55555c;
+    padding: 2px;
+  }
+  #mc .mc-fill { height: 100%; width: 0%; background: linear-gradient(#7fd4c1, #4a8f86); }
+  #mc .mc-status { font-size: 13px; color: #e6e6ea; letter-spacing: .6px; }
+
   /* ===== 资源管理器（展示替换过程） ===== */
   #explorer {
     position: fixed; right: 3.4vw; top: 50%; transform: translateY(-50%) translateX(40px);
@@ -234,7 +321,7 @@
 
   /* text layer */
   #txt {
-    position: fixed; inset: 0; z-index: 20; pointer-events: none;
+    position: fixed; inset: 0; z-index: 40; pointer-events: none;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
   }
   .txt {
@@ -292,6 +379,57 @@
 </head>
 <body>
   <canvas id="cv"></canvas>
+  <div id="mc">
+    <div class="mc-title">
+      <span class="mc-dots"><i></i><i></i><i></i></span>
+      <span>Minecraft 1.21.4 — Forge 47.3.0</span>
+    </div>
+    <div class="mc-body">
+      <div class="mc-head">选择服务器</div>
+      <div class="mc-sub">Minecraft 多人游戏 · 局域网世界</div>
+      <div class="mc-row" id="mcRow0">
+        <div class="mc-ico"></div>
+        <div class="mc-info">
+          <div class="mc-name">龙腾 · 枪战 PVP 服</div>
+          <div class="mc-motd">1.21.4 | 枪包已同步 | 欢迎</div>
+        </div>
+        <div class="mc-right">
+          <div class="mc-players">37/100</div>
+          <div class="mc-ping g"><i></i><i></i><i></i><i></i><i></i></div>
+        </div>
+      </div>
+      <div class="mc-row" id="mcRow1">
+        <div class="mc-ico"></div>
+        <div class="mc-info">
+          <div class="mc-name">生存养老 · 慢节奏</div>
+          <div class="mc-motd">1.21.4 | 建筑 / 探索 / 休闲</div>
+        </div>
+        <div class="mc-right">
+          <div class="mc-players">12/50</div>
+          <div class="mc-ping g"><i></i><i></i><i></i><i></i><i></i></div>
+        </div>
+      </div>
+      <div class="mc-row" id="mcRow2">
+        <div class="mc-ico"></div>
+        <div class="mc-info">
+          <div class="mc-name">竞速 · 极限挑战服</div>
+          <div class="mc-motd">1.21.4 | 高难 / 排名</div>
+        </div>
+        <div class="mc-right">
+          <div class="mc-players">204/300</div>
+          <div class="mc-ping y"><i></i><i></i><i></i><i></i><i></i></div>
+        </div>
+      </div>
+      <div class="mc-foot">
+        <button class="mc-btn" id="mcJoin">加入服务器</button>
+        <button class="mc-btn mc-btn-ghost" id="mcLeave">断开连接</button>
+      </div>
+    </div>
+    <div class="mc-overlay" id="mcOverlay">
+      <div class="mc-progress"><div class="mc-fill" id="mcFill"></div></div>
+      <div class="mc-status" id="mcStatus">正在加入服务器...</div>
+    </div>
+  </div>
   <div id="explorer">
     <div class="exp-bar">
       <span class="dot3"><i></i><i></i><i></i></span>
@@ -1202,6 +1340,53 @@ const APP_MODEL = {
     };
   }
 
+  // ---- Minecraft 窗口控制 ----
+  const mcEl = document.getElementById('mc');
+  const mcRow = [0,1,2].map(i => document.getElementById('mcRow' + i));
+  const mcJoin = document.getElementById('mcJoin');
+  const mcLeave = document.getElementById('mcLeave');
+  const mcOverlay = document.getElementById('mcOverlay');
+  const mcFill = document.getElementById('mcFill');
+  const mcStatus = document.getElementById('mcStatus');
+
+  gsap.set(mcEl, { yPercent: -50, x: 60, opacity: 0 });
+  function mcShow() {
+    gsap.to(mcEl, { yPercent: -50, x: 0, opacity: 1, duration: .6, ease: 'power3.out' });
+  }
+  function mcHide() {
+    gsap.to(mcEl, { yPercent: -50, x: 60, opacity: 0, duration: .55, ease: 'power2.in' });
+  }
+  // 焦点切换：MC 窗口作为主角 / 退居旁侧
+  function mcFocus(on) {
+    gsap.to(mcEl, {
+      yPercent: -50, scale: on ? 1 : .70, opacity: on ? 1 : .30,
+      duration: .7, ease: 'power3.inOut'
+    });
+  }
+  function mcSetConnected(i) {
+    mcRow.forEach((r, k) => r.classList.toggle('connected', k === i));
+  }
+  function mcSetSelected(i) {
+    mcRow.forEach((r, k) => r.classList.toggle('sel', k === i));
+  }
+  function mcOverlayOn(status) {
+    mcStatus.textContent = status;
+    mcOverlay.classList.add('on');
+    gsap.set(mcFill, { width: '0%' });
+  }
+  function mcOverlayOff() {
+    mcOverlay.classList.remove('on');
+  }
+  function mcHot(btn, on) {
+    if (btn) btn.classList.toggle('hot', !!on);
+  }
+  // 断线 / 加入的进度动画
+  function mcRunProgress(dur, onDone) {
+    gsap.to({ v: 0 }, { v: 1, duration: dur, ease: 'power1.inOut',
+      onUpdate: function () { mcFill.style.width = (this.targets()[0].v * 100) + '%'; },
+      onComplete: onDone });
+  }
+
   // ---- 资源管理器：展示替换过程 ----
   const explorer = document.getElementById('explorer');
   const expBody = document.getElementById('expBody');
@@ -1468,6 +1653,12 @@ const APP_MODEL = {
     pot.expDone = 0;
     gsap.set(explorer, { opacity: 0, x: 40 });
     expBody.innerHTML = ''; expRows = [];
+    // 复位 MC 窗口
+    gsap.set(mcEl, { yPercent: -50, x: 60, opacity: 0, scale: 1 });
+    mcOverlayOff();
+    gsap.set(mcFill, { width: '0%' });
+    mcRow.forEach(r => r.classList.remove('connected', 'sel'));
+    mcHot(mcJoin, false); mcHot(mcLeave, false);
     document.querySelectorAll('.p-grid,.p-grid-top').forEach(g => g.style.backgroundSize = '64px 64px');
     tl = gsap.timeline({ onComplete: () => { repBtn.style.opacity = '1'; } });
 
@@ -1621,45 +1812,80 @@ const APP_MODEL = {
     }, 29.6);
     tl.add(() => txtOut(t4, .6, 0), 31.2);
 
-    // 演示 3 (对应痛点3): 毫秒替换 + 进度
-    const t5 = makeText({ size: 28, html: '毫秒{a}替换{/a} — 一键完成', color: '#e4f0ea' });
-    tl.add(() => txtIn(t5, .9, 0), 31.8);
-    tl.to(cam, Object.assign(focusCam('btn_apply', 1.2, 4, 8, 30), { duration: 1.8, ease: 'power3.inOut', onUpdate: applyCam, onComplete: applyCam }), 32.1);
+    // ═══════════ 演示 3: 一键替换 + 跨服切换（核心卖点） ═══════════
+    // 分屏构图：左 = Pulses Swap，右 = Minecraft
+    const SPLIT_CAM = { scale: .64, tx: -320, ty: -6, rotX: 6, rotY: -7, rotZ: 0, tz: -40 };
+    const APP_CAM   = { scale: .62, tx: -330, ty: 40,  rotX: 4, rotY: 6,  rotZ: 0, tz: -20 };
+
+    // —— ① 在 PVP 服打累了 ——
+    const t5a = makeText({ size: 26, html: '在 PVP 服打腻了，想去生存服', color: '#e4f0ea', yOffset: 248 });
+    tl.add(() => txtIn(t5a, .8, 0), 31.5);
+    tl.add(() => { mcShow(); mcSetConnected(0); mcSetSelected(0); }, 31.7);
+    tl.add(() => { renderer.setButtonEnabled('btn_apply', true); }, 32.0);
+    tl.to(cam, Object.assign({}, SPLIT_CAM, { duration: 1.5, ease: 'power3.inOut', onUpdate: applyCam, onComplete: applyCam }), 31.7);
+
+    // —— ② 断开连接 ——
+    const t5b = makeText({ size: 24, html: '先断开 — 但不能重开游戏', color: '#e4f0ea', yOffset: 248 });
+    tl.add(() => { txtOut(t5a, .5, 0); txtIn(t5b, .7, .1); mcHot(mcLeave, true); }, 33.6);
+    tl.add(() => { mcHot(mcLeave, false); mcOverlayOn('正在断开连接...'); }, 34.3);
+    tl.add(() => mcRunProgress(.7, () => {
+      mcOverlayOff(); mcSetConnected(-1); mcSetSelected(-1);
+    }), 34.4);
+
+    // —— ③ 切到 Pulses Swap：一键替换 ——
+    const t5c = makeText({ size: 26, html: '{a}一键替换{/a} — 换成生存服的枪包', color: '#e4f0ea', yOffset: 248 });
+    tl.add(() => { txtOut(t5b, .5, 0); txtIn(t5c, .8, .1); mcFocus(false); }, 35.2);
+    tl.to(cam, Object.assign({}, APP_CAM, { duration: 1.3, ease: 'power3.inOut', onUpdate: applyCam, onComplete: applyCam }), 35.2);
     tl.add(() => {
       renderer.show('progress', true);
       renderer.show('progress_label', true);
-      renderer.setButtonEnabled('btn_apply', true);
-    }, 33.4);
-    tl.add(() => renderer.flashButton('btn_apply'), 34.0);
-    // —— 点击替换：资源管理器窗口弹出，实时展示替换过程 ——
-    const EXP_FILES = ['awp_dragon.tar.gz', 'ak47_redline.tar.gz', 'm4a1_storm.tar.gz',
-                       'deagle_blaze.tar.gz', 'sniper_ghost.tar.gz'];
-    tl.add(() => { explorerShow(EXP_FILES); expStatus.textContent = '正在替换…'; }, 34.05);
-    tl.add(() => renderer.setLabel('progress_label', '替换中…'), 34.2);
-    tl.to({ v: 0 }, { v: 1, duration: 2.2, ease: 'power2.inOut',
+      renderer.setLabel('progress_label', '替换中…');
+      renderer.flashButton('btn_apply');
+    }, 36.5);
+    // 资源管理器同步展示
+    const EXP_FILES = ['shotgun_wood.tar.gz', 'pistol_iron.tar.gz', 'medic_kit.tar.gz',
+                       'awp_dragon.tar.gz', 'ak47_redline.tar.gz'];
+    tl.add(() => { explorerShow(EXP_FILES); expStatus.textContent = '正在替换…'; }, 36.6);
+    tl.to({ v: 0 }, { v: 1, duration: 1.6, ease: 'power2.inOut',
       onUpdate: function () {
         const p = this.targets()[0].v;
         renderer.setProgress('progress', p);
-        // 资源管理器：随进度逐行变绿
         const done = Math.floor(p * EXP_FILES.length + 1e-6);
         if (pot.expDone < done) {
           for (let i = pot.expDone; i < done; i++) explorerHit(i);
           pot.expDone = done;
           expCount.textContent = done + '/' + EXP_FILES.length + ' 已替换';
         }
-        expStatus.textContent = p < 1 ? '正在替换…' : '完成';
-      } }, 34.4);
-    tl.add(() => { renderer.setProgress('progress', 1); renderer.setButtonText('btn_apply', '已应用'); renderer.setLabel('progress_label', '完成'); renderer.setLabel('info_status', '状态: 已应用'); }, 36.7);
-    tl.add(() => { expStatus.textContent = '完成 · 用时 0.3s'; expCount.textContent = '5/5 已替换'; }, 36.8);
-    tl.add(() => explorerHide(), 37.6);
-    tl.add(() => txtOut(t5, .6, 0), 37.0);
+      } }, 36.8);
+    tl.add(() => { renderer.setProgress('progress', 1); renderer.setButtonText('btn_apply', '已应用');
+      renderer.setLabel('progress_label', '完成 · 用时 0.3s'); renderer.setLabel('info_status', '状态: 已应用');
+      expStatus.textContent = '完成 · 用时 0.3s'; expCount.textContent = '5/5 已替换'; }, 38.4);
+    tl.add(() => explorerHide(), 39.2);
+    tl.add(() => { renderer.show('progress', false); renderer.show('progress_label', false); }, 39.6);
+
+    // —— ④ 回到 Minecraft：立刻进新服 ——
+    const t5d = makeText({ size: 24, html: '回到游戏 — 直接进生存服', color: '#e4f0ea', yOffset: 248 });
+    tl.add(() => { txtOut(t5c, .5, 0); txtIn(t5d, .7, .1); mcFocus(true); }, 39.6);
+    tl.to(cam, Object.assign({}, SPLIT_CAM, { duration: 1.1, ease: 'power3.inOut', onUpdate: applyCam, onComplete: applyCam }), 39.6);
+    tl.add(() => { mcSetSelected(1); mcHot(mcJoin, true); }, 40.7);
+    tl.add(() => { mcHot(mcJoin, false); mcShow(); mcOverlayOn('正在加入服务器 生存养老 · 慢节奏 ...'); }, 41.3);
+    // 极快的加载 —— 卖点就在这里
+    tl.add(() => mcRunProgress(.85, () => {
+      mcOverlayOff(); mcSetConnected(1); mcSetSelected(1);
+    }), 41.4);
+
+    // —— ⑤ 定格金句 ——
+    const t5e = makeText({ big: true, size: 46, html: '想去别的服玩？{a}1 秒就够了{/a}', color: '#f2faf7', yOffset: 0 });
+    tl.add(() => { txtOut(t5d, .4, 0); txtIn(t5e, .8, .15); blurOn(); }, 42.5);
+    tl.to(cam, { scale: .58, tx: -300, ty: -6, rotX: 4, rotY: -8, duration: 1.4, ease: 'power3.inOut', onUpdate: applyCam, onComplete: applyCam }, 42.5);
+    tl.add(() => { txtOut(t5e, .7, 0); blurOff(); mcHide(); }, 45.2);
 
     // 演示 4: 增量同步 — 拖入更新包 + 列表刷新（解决重下问题）
     const t6 = makeText({ size: 28, html: '增量{a}同步{/a} — 更新只传变化部分', color: '#e4f0ea' });
-    tl.add(() => txtIn(t6, .9, 0), 37.5);
+    tl.add(() => txtIn(t6, .9, 0), 45.9);
     // 相机聚焦到导入区（更新包拖入的位置）
     tl.to(cam, Object.assign(focusCam('import_drop', 1.45, 5, -12, 60),
-      { duration: 1.6, ease: 'power3.inOut', onUpdate: applyCam, onComplete: applyCam }), 37.7);
+      { duration: 1.6, ease: 'power3.inOut', onUpdate: applyCam, onComplete: applyCam }), 46.1);
 
     // —— 拖入 .fgcupdate 更新包 ——
     const _ur = wrect('import_drop');
@@ -1668,11 +1894,11 @@ const APP_MODEL = {
     ghost2.style.left = (updCX - 75) + 'px';
     ghost2.style.top  = (updCY - 46) + 'px';
     gsap.set(ghost2, { x: 700, y: -380, z: 90, scale: 1.5, rotation: 12, opacity: 0 });
-    tl.to(ghost2, { opacity: 1, duration: .3, ease: 'power2.out' }, 38.5);
+    tl.to(ghost2, { opacity: 1, duration: .3, ease: 'power2.out' }, 46.9);
     tl.to(ghost2, { keyframes: [
         { x: 260, y: -160, duration: .4, ease: 'power2.out', rotation: 4 },
         { x: 0, y: 0, duration: .56, ease: 'power3.inOut', rotation: 0, scale: 1 }
-      ] }, 38.65);
+      ] }, 47.05);
     // 落点：导入框发光 + 冲击环 + 进度提示
     tl.add(() => {
       renderer.setGuideGlow('import_drop', true);
@@ -1680,12 +1906,12 @@ const APP_MODEL = {
       renderer.show('progress', true);
       renderer.show('progress_label', true);
       renderer.setLabel('progress_label', '正在应用增量更新…');
-    }, 39.6);
-    tl.to(ghost2, { scale: .55, opacity: 0, duration: .28, ease: 'power2.in' }, 39.75);
-    tl.add(() => { if (ghost2 && ghost2.parentNode) ghost2.remove(); }, 40.05);
+    }, 48.0);
+    tl.to(ghost2, { scale: .55, opacity: 0, duration: .28, ease: 'power2.in' }, 48.15);
+    tl.add(() => { if (ghost2 && ghost2.parentNode) ghost2.remove(); }, 48.45);
     // 进度快速走完（增量包很小）
     tl.to({ v: 0 }, { v: 1, duration: .8, ease: 'power2.inOut',
-      onUpdate: function () { renderer.setProgress('progress', this.targets()[0].v); } }, 39.9);
+      onUpdate: function () { renderer.setProgress('progress', this.targets()[0].v); } }, 48.3);
 
     // —— 更新列表：应用增量后，枪包列表刷新并标出变化 ——
     tl.add(() => {
@@ -1703,7 +1929,7 @@ const APP_MODEL = {
         { text: 'vector_smg.tar.gz',    bg: T.statusAddedBg,    fg: T.statusAdded },
         { text: 'm4a1_storm2.tar.gz',   bg: T.statusModifiedBg, fg: T.statusModified },
       ], { animate: true });
-    }, 40.7);
+    }, 49.1);
     // 新增/变更条目依次脉冲，强调"只更新了这几个"
     tl.add(() => {
       const rows = renderer.get('gunpack_list').children;
@@ -1715,30 +1941,30 @@ const APP_MODEL = {
           { boxShadow: '0 0 0 2px rgba(127,212,193,.75)', duration: .25, delay: k * .12,
             yoyo: true, repeat: 1, ease: 'power2.out' });
       });
-    }, 41.3);
+    }, 49.7);
     const t6b = makeText({ size: 22, html: '只同步变化的部分 — 无需重下整个整合包', color: '#dcebe7', yOffset: 54 });
-    tl.add(() => txtIn(t6b, .8, 0), 41.5);
-    tl.add(() => { renderer.show('progress', false); renderer.show('progress_label', false); }, 43.0);
+    tl.add(() => txtIn(t6b, .8, 0), 49.9);
+    tl.add(() => { renderer.show('progress', false); renderer.show('progress_label', false); }, 51.4);
     // 拉远回全景
     tl.to(cam, Object.assign(focusCam('gunpack_list', 0.84, 6, 4, -40),
-      { duration: 1.6, ease: 'power3.inOut', onUpdate: applyCam, onComplete: applyCam }), 42.2);
-    tl.add(() => { txtOut(t6, .6, 0); txtOut(t6b, .6, 0); }, 43.4);
+      { duration: 1.6, ease: 'power3.inOut', onUpdate: applyCam, onComplete: applyCam }), 50.6);
+    tl.add(() => { txtOut(t6, .6, 0); txtOut(t6b, .6, 0); }, 51.8);
 
-    // ═══════════ ACT 4: 定格升华 (44-51s) ═══════════
+    // ═══════════ ACT 4: 定格升华 (52-59s) ═══════════
 
     const t7a = makeText({ big: true, size: 48, html: '{a}PULSE ENGINE{/a}', color: '#f2faf7', yOffset: -96 });
     t7a.style.textShadow = '0 0 50px rgba(127,212,193,.45)';
     const t7b = makeText({ size: 20, html: 'Tacz 枪包管理引擎 · 拖入 · 替换 · 同步', color: '#dcebe7', yOffset: -14 });
     const t7c = makeText({ size: 18, html: 'PULSES{a}0{/a} STUDIO · BETA', color: '#c2d2d4', yOffset: 46 });
-    tl.add(() => { txtIn(t7a, 1.1, 0); blurOn(); }, 44.1);
-    tl.add(() => txtIn(t7b, .9, .2), 44.7);
-    tl.to(cam, { scale: 0.4, tz: -260, rotX: 14, rotY: -8, duration: 4.4, ease: 'power3.inOut', onUpdate: applyCam, onComplete: applyCam }, 44.3);
-    tl.to(winEl, { opacity: 0.25, duration: 3.0, ease: 'power2.inOut' }, 44.7);
-    tl.add(() => txtIn(t7c, .9, 0), 46.3);
-    tl.add(() => { txtOut(t7a, 1.0, 0); txtOut(t7b, 1.0, 0); txtOut(t7c, 1.0, 0); blurOff(); }, 49.2);
+    tl.add(() => { txtIn(t7a, 1.1, 0); blurOn(); }, 52.4);
+    tl.add(() => txtIn(t7b, .9, .2), 53.0);
+    tl.to(cam, { scale: 0.4, tz: -260, rotX: 14, rotY: -8, duration: 4.4, ease: 'power3.inOut', onUpdate: applyCam, onComplete: applyCam }, 52.6);
+    tl.to(winEl, { opacity: 0.25, duration: 3.0, ease: 'power2.inOut' }, 53.0);
+    tl.add(() => txtIn(t7c, .9, 0), 54.6);
+    tl.add(() => { txtOut(t7a, 1.0, 0); txtOut(t7b, 1.0, 0); txtOut(t7c, 1.0, 0); blurOff(); }, 57.6);
 
     // progress bar
-    tl.to(bar, { width: '100%', duration: 51, ease: 'none' }, 0);
+    tl.to(bar, { width: '100%', duration: 59, ease: 'none' }, 0);
   }
 
   repBtn.addEventListener('click', () => {

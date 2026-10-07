@@ -330,7 +330,11 @@
      任何 text-shadow 都会从字里透出来（就是之前 0.84s 显黑那个坑）。 */
   /* 漏光扫过已移除：叠加在字上的静态特效，读起来"做作"。
      高级感改由文字自身的运动承担（逐字错峰浮现 + 持续浮动）。 */
-  .ch { display: inline-block; will-change: transform, opacity, filter; }
+  .ch {
+    display: inline-block;
+    will-change: transform, opacity, filter;
+    /* 影子是每个字自己投的，随字浮现而生长 —— 所以影子永远不会早于字出现 */
+  }
 
   /* 烫金行同样不能有衬底：暗块会从透明字形里透出来 */
   .txt.txt-gold::before { opacity: 0 !important; }
@@ -630,19 +634,12 @@
     content: '';
     position: absolute;
     left: 50%; top: 50%;
-    /* 贴住文字外框的柔边黑底。
-       关键是尺寸 —— 之前 128%×250% 铺成一大块，压在亮色 UI 上就是一坨灰黑涂抹，
-       把正在演示的界面也盖住了。现在收到 108%×152%，只比文字外框大一点点，
-       四周再柔化出去，所以它不会挡到文字以外的 UI。 */
-    width: 108%; height: 152%;
-    transform: translate(-50%, -50%);
-    background: radial-gradient(ellipse at center,
-      rgba(2,4,5,.80) 0%,
-      rgba(2,4,5,.68) 40%,
-      rgba(2,4,5,.34) 66%,
-      rgba(2,4,5,.08) 82%,
-      transparent 94%);
-    filter: blur(9px);
+    /* 整块衬底已移除：它会在字还没浮现完时先整块到位，
+       看起来就是"先出现一块黑，再把字摆上去"。
+       阴影改由每个字自己投（.ch 的 drop-shadow），跟着字的浮现同步生长。 */
+    display: none;
+    width: 0; height: 0;
+    background: none;
     z-index: -1;
     pointer-events: none;
   }
@@ -2290,11 +2287,15 @@ const APP_MODEL = {
       duration: dur, ease: 'appleSpring', delay: delay,
     };
     if (chars && chars.length) {
-      // 逐字：从下方 62% 处带轻微模糊浮上来，错峰 45ms 上限
-      gsap.set(chars, { opacity: 0, yPercent: 62, filter: 'blur(8px)' });
+      // 逐字：从下方 62% 处带模糊浮上来，影子同时从"无"长到"实"。
+      // 影子和字在同一个 tween、同一个 stagger 里 —— 所以永远是字投下影，
+      // 不会出现"先有一块黑底，再把字摆上去"。
+      const NO_SHADOW = 'blur(8px) drop-shadow(0 0 0 rgba(0,0,0,0))';
+      const CAST_SHADOW = 'blur(0px) drop-shadow(0 3px 7px rgba(0,0,0,.95)) drop-shadow(0 0 16px rgba(0,0,0,.75))';
+      gsap.set(chars, { opacity: 0, yPercent: 62, filter: NO_SHADOW });
       gsap.to(el, Object.assign(base, {
         onStart: () => gsap.to(chars, {
-          opacity: 1, yPercent: 0, filter: 'blur(0px)',
+          opacity: 1, yPercent: 0, filter: CAST_SHADOW,
           duration: dur * 0.85, delay: delay,
           ease: 'appleOut', stagger: Math.min(0.045, dur * 0.05),
         }),
@@ -2448,7 +2449,7 @@ const APP_MODEL = {
     tl.to('.aura', { opacity: 1, scale: 1.4, duration: .75, ease: 'appleSpring' }, BEATP(31) - .12);
     tl.to(winEl, { opacity: 1, duration: .55, ease: 'appleOut' }, BEATP(31));
 
-    const t0 = makeText({ big: true, size: 66, html: 'PULSES{a}SWAP{/a}', color: '#f2faf7', yOffset: 0 });
+    const t0 = makeText({ big: true, size: 66, html: 'PULSES {a}SWAP{/a}', color: '#f2faf7', yOffset: 0 });
     t0.style.textShadow = '0 0 50px rgba(127,212,193,.5)';
     // 严格落在第 31 拍（主唱进入的那一拍），绝不提前
     tl.add(() => txtIn(t0, .45, 0), ANCHOR_VOCAL);

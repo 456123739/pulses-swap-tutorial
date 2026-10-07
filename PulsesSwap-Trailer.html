@@ -66,6 +66,11 @@
     user-select: none;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+    max-width: 86vw;              /* 永不溢出左右边界 */
+    padding: 0 2vw;               /* 左右安全留白 */
+    white-space: normal;          /* 过长自动换行 */
+    overflow-wrap: break-word;
+    box-sizing: border-box;
   }
   .txt.sub { top: auto; bottom: 12%; }
 
@@ -909,8 +914,12 @@ const APP_MODEL = {
     d.className = 'txt ' + (opts.cls || '');
     d.style.fontFamily = opts.big ? TITLE_FONT : SUB_FONT;
     d.style.fontWeight = opts.big ? '500' : '400';
-    d.style.letterSpacing = (opts.big ? 8 : 3) + 'px';
-    d.style.fontSize = (opts.size || (opts.big ? 64 : 26)) + 'px';
+    // 字距也随视口收缩，长句不会因字距溢出
+    d.style.letterSpacing = opts.big ? 'min(8px, 0.55vw)' : 'min(3px, 0.28vw)';
+    // 字号随视口缩放：桌面保持设计值，窄屏自动收缩，绝不溢出
+    const _sz = (opts.size || (opts.big ? 64 : 26));
+    const _vwCap = opts.big ? 7.2 : 4.6;
+    d.style.fontSize = 'min(' + _sz + 'px, ' + _vwCap + 'vw)';
     d.style.color = opts.color || '#eaf4f1';
     d.style.textAlign = 'center';
     d.style.lineHeight = opts.big ? '1.05' : '1.4';
@@ -1013,7 +1022,7 @@ const APP_MODEL = {
 
     // ═══════════ ACT 2: 转折 — 产品作为最佳选择登场 (14-20s) ═══════════
 
-    const t0 = makeText({ big: true, size: 76, html: 'PULSES{a}SWAP{/a}', color: '#f2faf7', yOffset: 0 });
+    const t0 = makeText({ big: true, size: 66, html: 'PULSES{a}SWAP{/a}', color: '#f2faf7', yOffset: 0 });
     t0.style.textShadow = '0 0 50px rgba(127,212,193,.5)';
     tl.add(() => txtIn(t0, 1.0, 0), 14.2);
     tl.to('.aura', { opacity: 1, scale: 1.4, duration: 2, ease: 'power3.out' }, 14.0);
@@ -1101,7 +1110,7 @@ const APP_MODEL = {
 
     // ═══════════ ACT 4: 定格升华 (43-50s) ═══════════
 
-    const t7a = makeText({ big: true, size: 54, html: '{a}PULSE ENGINE{/a}', color: '#f2faf7', yOffset: -96 });
+    const t7a = makeText({ big: true, size: 48, html: '{a}PULSE ENGINE{/a}', color: '#f2faf7', yOffset: -96 });
     t7a.style.textShadow = '0 0 50px rgba(127,212,193,.45)';
     const t7b = makeText({ size: 20, html: 'Tacz 枪包管理引擎 · 拖入 · 替换 · 同步', color: '#c2d6d2', yOffset: -14 });
     const t7c = makeText({ size: 18, html: 'PULSES{a}0{/a} STUDIO · BETA', color: '#a4babd', yOffset: 46 });

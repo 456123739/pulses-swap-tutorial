@@ -1115,7 +1115,7 @@ const APP_MODEL = {
     tl.to('.p-grid-top', { backgroundSize: '48px 48px', duration: 7, ease: 'power1.inOut' }, 3.5);
     tl.to('#patterns', { filter: 'brightness(1.35)', duration: 6, ease: 'power2.in' }, 7.5);
 
-    const p1 = makeText({ size: 30, html: 'Tacz 玩家都懂', color: '#8a9ea0' });
+    const p1 = makeText({ size: 30, html: '玩过 TaCZ 的都知道', color: '#b6c6c8' });
     tl.add(() => { txtIn(p1, 1.0, 0); blurOn(); }, 0.6);
     tl.to(cam, { scale: 0.5, tz: -400, duration: 3, ease: 'power2.out', onUpdate: applyCam, onComplete: applyCam }, 0);
     tl.to('.aura', { opacity: .5, duration: 3, ease: 'power2.out' }, 0);

@@ -328,34 +328,9 @@
      只作用于 .txt-big，幅度刻意压小（色散 ±1.1px、漏光 20-32% 透明度），
      目的是"活的"而不是"炫技"。烫金行排除色散 —— 它是透明字形填充，
      任何 text-shadow 都会从字里透出来（就是之前 0.84s 显黑那个坑）。 */
-  /* 扫光只在字形上走：::after 复刻同一段文字，用 background-clip:text 把光裁进字里，
-     所以它不会在背景上留下一条方块带子。 */
-  @keyframes textSweep {
-    0%   { background-position: 240% center; }
-    100% { background-position: -140% center; }
-  }
-  @keyframes heroChroma {
-    0%,100% { text-shadow: -1.1px 0 rgba(255,92,92,.50), 1.1px 0 rgba(92,208,255,.50), 0 0 54px rgba(127,212,193,.42); }
-    33%     { text-shadow: -0.4px 0 rgba(255,92,92,.40), 0.4px 0 rgba(92,208,255,.40), 0 0 46px rgba(127,212,193,.36); }
-    66%     { text-shadow:  1.1px 0 rgba(255,92,92,.50), -1.1px 0 rgba(92,208,255,.50), 0 0 58px rgba(127,212,193,.46); }
-  }
-  .txt-big:not(.txt-gold) { animation: heroChroma 4.6s ease-in-out infinite; }
-  .txt::after {
-    content: attr(data-text);
-    position: absolute; left: 0; top: 0; width: 100%; height: 100%;
-    background-image: linear-gradient(105deg,
-      transparent 42%, rgba(255,255,255,.34) 48%, rgba(216,244,255,.92) 50%,
-      rgba(255,255,255,.34) 52%, transparent 58%);
-    background-size: 260% 100%;
-    background-repeat: no-repeat;
-    -webkit-background-clip: text; background-clip: text;
-    -webkit-text-fill-color: transparent;
-    pointer-events: none; z-index: 2;
-    animation: textSweep 6.8s linear infinite;
-  }
-  .txt-big::after { animation-duration: 4.2s; }
-  /* 模糊底上扫光放慢，避免糊成一片 */
-  body.blur-top-active .txt::after { animation-duration: 7.8s; opacity: .65; }
+  /* 漏光扫过已移除：叠加在字上的静态特效，读起来"做作"。
+     高级感改由文字自身的运动承担（逐字错峰浮现 + 持续浮动）。 */
+  .ch { display: inline-block; will-change: transform, opacity, filter; }
 
   /* 烫金行同样不能有衬底：暗块会从透明字形里透出来 */
   .txt.txt-gold::before { opacity: 0 !important; }
@@ -1619,10 +1594,11 @@ const APP_MODEL = {
     d.style.lineHeight = opts.big ? '1.05' : '1.4';
     d.style.whiteSpace = 'pre-wrap';
     // 更强可读性：多层阴影勾勒字形
-    // 不要给字形加贴边黑描边：0 0 3px 的暗圈会把笔画本身吃掉，
-    // 近白的字会被读成暗色 —— 这就是"文字颜色丢失"的真正原因。
-    // 对比度改由整帧压暗(#dim)承担，字形保持纯粹的颜色。
-    d.style.textShadow = 'none';
+    // 只给"字背后"压暗，不给"字本身"描边。
+    //   0 0 3px 那种贴边暗圈会吃掉笔画，近白的字会被读成暗色（颜色丢失的元凶）；
+    //   大半径低透明度的柔光只是把字形周围的底压下去，字色本身完全不变。
+    // 这是浅色字幕压在亮色 UI 上唯一既保色又保可读的做法。
+    d.style.textShadow = '0 1px 16px rgba(0,0,0,.72), 0 0 44px rgba(0,0,0,.50)';
     d.innerHTML = opts.html.replace(/\{a\}/g, '<span style="color:' + ACCENT + ';">')
       .replace(/\{\/a\}/g, '</span>');
     d.style.filter = 'blur(12px)';
@@ -1641,6 +1617,26 @@ const APP_MODEL = {
     }
     // 大字单独标记，供漏光/色散/浮动使用
     if (opts.big) d.classList.add('txt-big');
+    // 逐字拆分：入场时每个字各自错峰浮现，这是"高级感"的主要来源。
+    // 烫金字跳过 —— 它的渐变是整段连续的，拆字会割裂金箔。
+    if (!opts.gold) {
+      (function walk(node) {
+        [...node.childNodes].forEach(n => {
+          if (n.nodeType === 3) {
+            const frag = document.createDocumentFragment();
+            [...n.textContent].forEach(ch => {
+              if (ch === ' ' || ch === '\n') { frag.appendChild(document.createTextNode(ch)); return; }
+              const sp = document.createElement('span');
+              sp.className = 'ch';
+              sp.textContent = ch;
+              frag.appendChild(sp);
+            });
+            node.replaceChild(frag, n);
+          } else if (n.nodeType === 1) { walk(n); }
+        });
+      })(d);
+      d._chars = d.querySelectorAll('.ch');
+    }
     // 漏光要"只扫在字上"，所以让 ::after 复刻同一段文字再做 background-clip:text
     d.setAttribute('data-text', d.textContent);
     d.style.transform = 'translate(calc(-50% + ' + d._xOff + 'px), calc(-50% + ' + d._yOff + 'px)) scale(.9)';
@@ -2275,9 +2271,27 @@ const APP_MODEL = {
   function blurOff() { gsap.to(blurOverlay, { opacity: 0, duration: .6, ease: 'appleIn' }); }
 
   function txtIn(el, dur, delay) {
-    gsap.to(el, { filter: 'blur(0px)', opacity: 1, scale: 1,
-      xPercent: -50, yPercent: -50, x: (el._xOff || 0), y: (el._yOff || 0),
-      duration: dur || 1.1, ease: 'appleSpring', delay: delay || 0 });
+    dur = dur || 1.1; delay = delay || 0;
+    const chars = el._chars;
+    const base = {
+      opacity: 1, scale: 1, filter: 'blur(0px)',
+      xPercent: -50, yPercent: -50,
+      x: (el._xOff || 0), y: (el._yOff || 0),
+      duration: dur, ease: 'appleSpring', delay: delay,
+    };
+    if (chars && chars.length) {
+      // 逐字：从下方 62% 处带轻微模糊浮上来，错峰 45ms 上限
+      gsap.set(chars, { opacity: 0, yPercent: 62, filter: 'blur(8px)' });
+      gsap.to(el, Object.assign(base, {
+        onStart: () => gsap.to(chars, {
+          opacity: 1, yPercent: 0, filter: 'blur(0px)',
+          duration: dur * 0.85, delay: delay,
+          ease: 'appleOut', stagger: Math.min(0.045, dur * 0.05),
+        }),
+      }));
+    } else {
+      gsap.to(el, base);
+    }
   }
   function txtOut(el, dur, delay) {
     gsap.to(el, { filter: 'blur(8px)', opacity: 0, scale: 1.05,
@@ -2438,10 +2452,6 @@ const APP_MODEL = {
     tl.add(() => txtIn(tEngSub, .7, .16), BEATP(39) + .28);
     tl.to(cam, { rotY: 10, rotX: 6, duration: 2.2, ease: 'appleSoft', onUpdate: applyCam, onComplete: applyCam }, BEATP(39));
     tl.add(() => { txtOut(tEng, .55, 0); txtOut(tEngSub, .55, 0); blurOff(); }, BEATP(45));
-
-    // 从这一章开始画面里有亮色软件窗口，字幕（浅色字）需要整帧压暗来撑对比度。
-    // 用 dim 而不是逐字幕衬底：均匀、不露形，不会出现一坨坨灰黑涂抹。
-    tl.add(() => dimOn(), BEATP(46));
 
     // ═══════════ ACT 3: 功能演示 ═══════════
 
@@ -2802,7 +2812,6 @@ const APP_MODEL = {
     t7a.style.textShadow = '0 0 50px rgba(127,212,193,.45)';
     const t7b = makeText({ size: 20, html: 'Tacz 枪包管理引擎 · 拖入 · 替换 · 同步', color: '#dcebe7', yOffset: -16 });
     const t7c = makeText({ size: 18, html: 'PULSES{a}0{/a} STUDIO · BETA', color: '#c2d2d4', yOffset: 44 });
-    tl.add(() => dimOff(), 87.90);        // 结尾章改用整体高斯模糊，压暗层退场
     tl.add(() => { txtIn(t7a, .9, 0); blurOn(); }, 88.0);
     tl.add(() => txtIn(t7b, .8, .16), 88.6);
     tl.add(() => txtIn(t7c, .8, .26), 88.6);          // 制作组与大字幕同批出现，不再单独迟到

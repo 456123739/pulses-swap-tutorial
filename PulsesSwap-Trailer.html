@@ -2402,9 +2402,11 @@ const APP_MODEL = {
   // 不直接 tween '--scrim' 是因为自定义属性没有注册 @property 时，
   // 各家浏览器对插值的处理不一致；代理对象 + onUpdate 是稳的。
   function scrimTo(el, v, dur, delay) {
+    // 同一元素上只允许有一条衬底补间，否则先后两条会互相抢同一个 CSS 变量。
+    if (el._scrimTween) { el._scrimTween.kill(); el._scrimTween = null; }
     const cur = parseFloat(el.style.getPropertyValue('--scrim'));
     const o = { v: isNaN(cur) ? 0 : cur };
-    gsap.to(o, {
+    el._scrimTween = gsap.to(o, {
       v: v, duration: dur, delay: delay || 0, ease: 'appleOut',
       onUpdate: () => el.style.setProperty('--scrim', o.v),
     });
@@ -2427,6 +2429,7 @@ const APP_MODEL = {
       // 所以直接读逐字 tween 的 progress()，衬底强度 = 它的实际进度。
       // 这样衬底在数学上不可能跑到字前面，无论 dur/delay/stagger 怎么变。
       gsap.set(chars, { opacity: 0, yPercent: 62 });
+      if (el._scrimTween) { el._scrimTween.kill(); el._scrimTween = null; }
       let charTween = null;
       const paint = () => {
         const p = charTween ? charTween.progress() : 0;
@@ -2439,18 +2442,20 @@ const APP_MODEL = {
         ease: 'appleOut', stagger: Math.min(0.045, dur * 0.05),
         onUpdate: paint, onComplete: () => el.style.setProperty('--scrim', '1'),
       });
+      el._scrimTween = charTween;   // 交给 txtOut 接管，避免两条补间抢同一个变量
     } else {
       gsap.to(el, base);
       scrimTo(el, 1, dur * 0.9, delay);
     }
   }
   function txtOut(el, dur, delay) {
-    // 衬底是 .txt 的子层，会跟着父层 opacity 一起淡出，这里只要把它归零，
-    // 免得同一个元素被复用时残留。
-    el.style.setProperty('--scrim', '0');
+    // 衬底必须跟着一起淡出。原来这里是瞬间 setProperty('--scrim','0')，
+    // 字还在 blur 里往外飘、背后的暗场已经"啪"地没了 —— 就是"晕影突然消失"。
+    const d0 = dur || .8;
+    scrimTo(el, 0, d0 * 0.9, delay || 0);
     gsap.to(el, { filter: 'blur(8px)', opacity: 0, scale: 1.05,
       xPercent: -50, yPercent: -50, x: (el._xOff || 0), y: (el._yOff || 0) - 14,
-      duration: dur || .8, ease: 'appleIn', delay: delay || 0 });
+      duration: d0, ease: 'appleIn', delay: delay || 0 });
   }
 
   const bar = document.getElementById('bar');
@@ -2710,8 +2715,15 @@ const APP_MODEL = {
     }, BEATP(67) + .22);
 
     // —— 一键替换 (b70 = 29.332s) ——
+    // 这一章要真的"推近"到 Step 4 那一行按钮上，否则窗口只是整体放大，
+    // 观众不知道看哪。APPLY_CAM 的 tx/ty 是实测解出来的：
+    //   scale 1.05 时 btn_apply 中心落在 (970.7, 632)（g(s) = 实测中心 − 当时的 tx/ty），
+    //   要把它摆到 (780, 500) → tx = 780−970.7 = −190.7，ty = 500−632 = −132。
+    // 窗口此时 1229×821，右缘 1198 —— 资源管理器左缘 1224，不打架。
+    const APPLY_CAM = { scale: 1.05, tx: -191, ty: -132, rotX: 4, rotY: 6, rotZ: 0, tz: -20 };
     const t5c = makeText({ size: 25, html: '{a}一键替换{/a} — 换成生存服的枪包', color: '#e4f0ea', yOffset: 248 });
     tl.add(() => { txtOut(t5b, .4, 0); txtIn(t5c, .5, .03); }, BEATP(72));
+    tl.to(cam, Object.assign({}, APPLY_CAM, { duration: .9, ease: 'appleOut', onUpdate: applyCam, onComplete: applyCam }), BEATP(69) + .2);
     tl.add(() => {
       renderer.show('progress', true);
       renderer.show('progress_label', true);

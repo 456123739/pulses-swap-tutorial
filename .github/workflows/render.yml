@@ -64,7 +64,7 @@ jobs:
           FPS=${{ github.event.inputs.fps || 60 }}
           mkdir -p out
           ffmpeg -y -f concat -safe 0 -i frames/list.txt \
-            -vsync cfr -r $FPS -pix_fmt yuv420p -c:v libx264 -preset slow -crf 16 \
+            -fps_mode cfr -r $FPS -pix_fmt yuv420p -c:v libx264 -preset slow -crf 16 \
             -movflags +faststart -an out/video.mp4
           ffmpeg -y -i out/video.mp4 -i audio.mp3 \
             -c:v copy -c:a aac -b:a 192k -shortest -movflags +faststart \

@@ -370,6 +370,15 @@
   }
   /* 被斩断的字：上下两半各自包一层，动外层就不会碰到字自己的 transform */
   .cut-wrap { position: absolute; inset: 0; pointer-events: none; will-change: transform, opacity; }
+  /* 删除线：一条亮线从左扫到右，扫过的地方把字划掉 */
+  .txt .strike {
+    position: absolute; left: 0; right: 0; top: 50%;
+    height: 3px; margin-top: -1.5px; border-radius: 2px;
+    background: linear-gradient(90deg,
+      rgba(255,255,255,0), #ffffff 6%, #ffffff 94%, rgba(255,255,255,0));
+    box-shadow: 0 0 12px rgba(255,255,255,.85), 0 0 34px rgba(127,212,193,.55);
+    transform-origin: left center; pointer-events: none;
+  }
   /* 坍缩点 */
   .hero-dot {
     position: absolute; left: 50%; top: 50%; width: 20px; height: 20px;
@@ -3690,6 +3699,25 @@ const APP_MODEL = {
     gsap.set(el, { opacity: 0 });
     return parts;
   }
+  // 把几行字"划掉"：一条亮线从左扫到右，扫过处留下删除线，字同时暗下去。
+  // 只压暗 .ch（逐字 span），删除线本身是 .txt 的直接子元素，保持全亮。
+  function strikeLines(els) {
+    els.forEach((el, i) => {
+      if (!el || !el.parentNode) return;
+      const bar = document.createElement('i');
+      bar.className = 'strike';
+      el.appendChild(bar);
+      const d = i * .07;
+      gsap.set(bar, { rotation: -1.3, scaleX: 0 });
+      gsap.to(bar, { scaleX: 1, duration: .22, delay: d, ease: 'power2.out' });
+      gsap.to(el.querySelectorAll('.ch'), {
+        opacity: .30, duration: .30, delay: d + .10, ease: 'power2.out',
+      });
+    });
+    heroFlash('impact', .45);
+    glitchBurst(2.4);
+  }
+
   function debrisFall() {
     CUT.forEach((pair, i) => {
       pair.forEach((w, k) => {
@@ -4039,19 +4067,13 @@ const APP_MODEL = {
     tl.to(c2, { y:    0, duration: .48, ease: 'appleOut' }, H3 + .06);
     tl.to(c3, { y:  110, duration: .48, ease: 'appleOut' }, H3 + .06);
 
-    tl.add(() => bladeIn(true), 8.45);
-    tl.add(() => {
-      bladeCut(1);
-      CUT = [cutLine(c1), cutLine(c2), cutLine(c3)];
-      // 三行用**同一个位移**，像一整块被一刀切开。
-      // 每行给不同偏移就会散成六块，看着割裂 —— 那是上一版最大的问题。
-      CUT.forEach(pair => {
-        gsap.to(pair[0], { x: -34, y: -30, rotation: -1.2, duration: .30, ease: 'power3.out' });
-        gsap.to(pair[1], { x:  34, y:  30, rotation:  1.2, duration: .30, ease: 'power3.out' });
-      });
-    }, 9.15);
-    tl.add(() => debrisFall(), 9.85);
-    tl.add(() => { glitchBurst(3.0); crackBurst(); pressureUp(.92); }, 9.90);
+    tl.add(() => { glitchBurst(2.2); scanSweep(); }, 8.591);
+    // 9.15：三行被一条线**划掉**，不是斩断。
+    // 斩断要把每行切成两半再错位，三行就是六块碎片，怎么调都显割裂；
+    // 删除线是一个所有人都懂的符号 —— 问题被消掉了。
+    tl.add(() => { strikeLines([c1, c2, c3]); crackBurst(); pressureUp(.92); }, 9.15);
+    // 划完停一拍让人看清"已删除"，再一起退场
+    tl.add(() => { txtOut(c1, .42, 0); txtOut(c2, .42, .06); txtOut(c3, .42, .12); }, 9.98);
 
     // ── 10.20–13.185　幸存者 → 告别 → 收紧 → 第二刀 → 释放 ─────────
     const q1 = makeText({ size: 40, html: '从现在起，',                color: '#eef4f2', yOffset: -38 });

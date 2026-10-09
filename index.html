@@ -296,6 +296,88 @@
     box-shadow: 0 12px 34px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.05);
     -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
   }
+
+  /* ===== ACT 1 巨物层：开场那堵「文件夹墙」 =====
+     全片第一个画面不是字 —— 是一个巨大、有重量、会裂开、会自我复制的文件夹。
+     把最无聊的电脑物件当产品来打光，是这支片子最反常规的一步。
+     刻意不用 backdrop-filter：16 张卡同时上模糊会直接把帧率吃掉。 */
+  #hero {
+    position: fixed; inset: 0; z-index: 3; pointer-events: none; opacity: 0;
+    perspective: 1500px; perspective-origin: 50% 46%;
+    transform-style: preserve-3d; overflow: hidden;
+  }
+  /* 紫黑块 —— MC 里"模型/贴图缺失"的经典图标。
+     对 TaCZ 玩家来说它就是"枪包和服务器对不上"的具象。
+     全场唯一的高饱和品红，专门用来当反派：整片冷青底上，它一眼就扎进来。 */
+  .hero-card {
+    position: absolute; left: 50%; top: 50%;
+    border-radius: 10px; overflow: hidden;
+    background-color: #000;
+    background-image: conic-gradient(#f800f8 0 25%, #000 0 50%, #f800f8 0 75%, #000 0);
+    border: 1px solid rgba(255,255,255,.22);
+    box-shadow:
+      0 22px 54px rgba(0,0,0,.72),
+      0 0 48px rgba(248,0,248,.28),
+      inset 0 2px 0 rgba(255,255,255,.22),
+      inset 0 -3px 0 rgba(0,0,0,.66);
+    will-change: transform, opacity;
+  }
+  .hero-card.hero-main {
+    border-radius: 16px;
+    box-shadow:
+      0 40px 120px rgba(0,0,0,.78),
+      0 0 180px rgba(248,0,248,.36),
+      inset 0 3px 0 rgba(255,255,255,.24),
+      inset 0 -5px 0 rgba(0,0,0,.68);
+  }
+  /* 贴图撕裂：同图案错位的几条横带，持续随机抖动 */
+  .hero-card .hc-glitch {
+    position: absolute; inset: 0; pointer-events: none;
+    background: inherit;
+    clip-path: polygon(0 27%, 100% 27%, 100% 39%, 0 39%, 0 58%, 100% 58%, 100% 71%, 0 71%);
+    will-change: transform;
+  }
+  /* 右下角压一条文件名 —— 说明这块紫黑是哪个枪包变的 */
+  .hero-card .hc-name {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    padding: 4px 6px 5px; text-align: center;
+    font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    color: rgba(255,255,255,.88); letter-spacing: .2px;
+    background: linear-gradient(transparent, rgba(0,0,0,.82) 42%);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  /* 地面冲击环 */
+  .hero-ring {
+    position: absolute; left: 50%; top: 50%; border-radius: 50%;
+    border: 2px solid rgba(127,212,193,.60);
+    box-shadow: 0 0 30px rgba(127,212,193,.50), inset 0 0 30px rgba(127,212,193,.28);
+    will-change: transform, opacity;
+  }
+  /* 斩断用的斜向光刃 */
+  #heroBlade {
+    position: absolute; left: 50%; top: 50%;
+    width: 2800px; height: 3px; margin-left: -1400px; margin-top: -1.5px;
+    background: linear-gradient(90deg,
+      transparent 3%, rgba(255,255,255,.10) 20%, rgba(255,255,255,.92) 47%,
+      #ffffff 50%, rgba(255,255,255,.92) 53%, rgba(255,255,255,.10) 80%, transparent 97%);
+    box-shadow: 0 0 26px rgba(200,255,246,.9), 0 0 90px rgba(127,212,193,.6);
+    opacity: 0; will-change: transform, opacity;
+  }
+  /* 冲击 / 斩击的屏幕闪光 */
+  #heroFlash {
+    position: fixed; inset: 0; z-index: 5; pointer-events: none; opacity: 0;
+    mix-blend-mode: screen;
+  }
+  /* 被斩断的字：上下两半各自包一层，动外层就不会碰到字自己的 transform */
+  .cut-wrap { position: absolute; inset: 0; pointer-events: none; will-change: transform, opacity; }
+  /* 坍缩点 */
+  .hero-dot {
+    position: absolute; left: 50%; top: 50%; width: 20px; height: 20px;
+    margin: -10px 0 0 -10px; border-radius: 50%; opacity: 0;
+    background: radial-gradient(circle, #ffffff, rgba(200,255,246,.92) 38%, rgba(127,212,193,0) 72%);
+    box-shadow: 0 0 46px rgba(200,255,246,.95), 0 0 120px rgba(127,212,193,.6);
+    will-change: transform, opacity;
+  }
   /* 胶片噪点 */
   /* 胶片颗粒。两条硬约束：
      ① 绝不逐帧跳动。旧写法是 animation: steps(2)/.28s —— 每秒抖 7 次，
@@ -806,6 +888,8 @@
   <div id="noise"></div>
   <div id="mood"></div>
   <div id="vig"></div>
+  <div id="hero"><div id="heroBlade"></div></div>
+  <div id="heroFlash"></div>
   <div id="patterns">
     <div class="p-grid"></div>
     <div class="p-grid-top"></div>
@@ -3342,6 +3426,311 @@ const APP_MODEL = {
     }
   })();
 
+  // ═══════════════════════════════════════════════════════════════
+  // ACT 1 巨物系统 —— 开场那堵「文件夹墙」
+  // 全片第一个画面不是字：一个巨大、有重量、会裂开、会自我复制的文件夹。
+  // 把最无聊的电脑物件当成产品来打光，是这支片子最反常规的一步。
+  // ═══════════════════════════════════════════════════════════════
+  const heroLayer = document.getElementById('hero');
+  const heroBlade = document.getElementById('heroBlade');
+  const heroFlashEl = document.getElementById('heroFlash');
+  const heroCards = [];
+  let heroMain = null;
+  let heroDot = null;
+  let CUT = [];                       // 被斩断的字：[[上半, 下半], ...]
+
+  // 文件名本身就是笑点 —— 每个 TaCZ 玩家都有一堆这种名字的包
+  const HERO_NAMES = [
+    'gunpack_v1.tar.gz',        'gunpack_v1.2.tar.gz',
+    'gunpack_final.tar.gz',     'gunpack_final_2.tar.gz',
+    'gunpack_最终版.tar.gz',     'gunpack_最终版_改.tar.gz',
+    'gunpack_最终版_改2.tar.gz', 'gunpack_真的最终.tar.gz',
+    'gunpack_new.tar.gz',       'gunpack_new(1).tar.gz',
+    'gunpack_备份.tar.gz',       'gunpack_备份_旧.tar.gz',
+    'gunpack_修复版.tar.gz',     'gunpack_勿删.tar.gz',
+    'gunpack_待整理.tar.gz',     'gunpack_????.tar.gz',
+  ];
+  const HERO_GARBLED = [
+    'gunpack_▓▓▓▓.tar.gz', 'gunpack_????.tar.gz', 'gunpack_██_改.tar.gz',
+    'gunpack_??(1).tar.gz', 'gunpack_▒▒▒.tar.gz', 'gunpack_ERR.tar.gz',
+  ];
+
+  // 4×4 墙：手工排布，要"堆成一堵墙"，不是随机撒点
+  const HERO_WALL = [];
+  (function () {
+    const cols = 4, rows = 4, cw = 132, ch = 132, gx = 20, gy = 20;
+    const W = cols * cw + (cols - 1) * gx, H = rows * ch + (rows - 1) * gy;
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+      const i = r * cols + c;
+      HERO_WALL.push({
+        x: -W / 2 + c * (cw + gx) + cw / 2,
+        y: -H / 2 + r * (ch + gy) + ch / 2 - 150,
+        z: (i % 3) * -22,
+        rz: ((r + c) % 2 ? 1 : -1) * (1.0 + (i % 4) * 0.45),
+      });
+    }
+  })();
+
+  function makeHeroCard(i, big) {
+    const size = big ? 460 : 132;
+    const el = document.createElement('div');
+    el.className = 'hero-card' + (big ? ' hero-main' : '');
+    el.style.width = size + 'px';
+    el.style.height = size + 'px';
+    // 巨物不带文件名 —— 它就是一个纯粹的、icon 级的"坏掉了"
+    el.innerHTML = '<div class="hc-glitch"></div>' +
+      (big ? '' : '<div class="hc-name" style="font-size:9px">' +
+        HERO_NAMES[i % HERO_NAMES.length] + '</div>');
+    gsap.set(el, { xPercent: -50, yPercent: -50, x: 0, y: 0, z: 0, scale: 1, opacity: 0 });
+    heroLayer.appendChild(el);
+    const gl = el.querySelector('.hc-glitch');
+    if (gl) gsap.to(gl, { x: 'random(-17,17)', duration: .1, repeat: -1,
+      repeatRefresh: true, ease: 'none', delay: Math.random() * .3 });
+    return el;
+  }
+
+  // —— 屏幕闪光：impact = 撞击白爆；cut = 沿刃线的色散爆 ——
+  function heroFlash(kind, strength) {
+    heroFlashEl.style.background = kind === 'cut'
+      ? 'linear-gradient(112deg, rgba(255,40,90,0) 38%, rgba(255,60,110,.26) 48%,' +
+        ' rgba(255,255,255,.78) 50%, rgba(60,220,255,.26) 52%, rgba(60,220,255,0) 62%)'
+      : 'radial-gradient(ellipse at 50% 52%, rgba(255,255,255,.80),' +
+        ' rgba(200,255,246,.30) 34%, transparent 68%)';
+    gsap.fromTo(heroFlashEl, { opacity: strength },
+      { opacity: 0, duration: kind === 'cut' ? .34 : .22, ease: 'power2.out' });
+  }
+
+  function groundRing(x, y, s) {
+    const w = 320 * (s || 1);
+    const r = document.createElement('div');
+    r.className = 'hero-ring';
+    r.style.width = w + 'px'; r.style.height = (w * .22) + 'px';
+    r.style.marginLeft = (-w / 2 + (x || 0)) + 'px';
+    r.style.marginTop = (-w * .11 + (y || 0)) + 'px';
+    heroLayer.appendChild(r);
+    gsap.fromTo(r, { scale: .22, opacity: .95 },
+      { scale: 2.8, opacity: 0, duration: .9, ease: 'appleSoft', onComplete: () => r.remove() });
+  }
+
+  // ── S1 巨物坠落 ──
+  function heroOpen() {
+    gsap.set(heroLayer, { opacity: 1 });
+    heroMain = makeHeroCard(0, true);
+    heroCards.push(heroMain);
+    gsap.fromTo(heroMain,
+      { y: -700, scale: 1.55, rotation: -5, opacity: 0 },
+      { y: 0, scale: 1, rotation: 0, opacity: 1, duration: .30, ease: 'power3.in' });
+  }
+  function heroLand() {
+    const el = heroMain;
+    if (!el) return;
+    // squash & stretch：落地压扁再弹回 —— 有重量才叫巨物
+    gsap.timeline()
+      .to(el, { scaleX: 1.11, scaleY: .87, duration: .07, ease: 'power2.out' })
+      .to(el, { scaleX: .97, scaleY: 1.05, duration: .09, ease: 'power2.inOut' })
+      .to(el, { scaleX: 1, scaleY: 1, duration: .34, ease: 'elastic.out(1,.42)' });
+    groundRing(0, 230, 1);
+    heroFlash('impact', .8);
+    // 落地之后开始缓慢三维摆动：读起来是一块"东西"，不是一张平贴的色卡
+    gsap.to(el, { rotationY: 11, rotationX: -6, duration: 2.9,
+      yoyo: true, repeat: -1, ease: 'sine.inOut', delay: .45 });
+  }
+
+  // ── S2 分裂 / 复制 ──
+  function heroSplit() {
+    const src = heroMain;
+    if (!src) return;
+    // 两半沿中线撕开，撕开的瞬间用新卡顶上 —— 白闪盖住替换
+    const halves = [true, false].map(top => {
+      const h = src.cloneNode(true);
+      h.classList.add('hero-half');
+      h.style.clipPath = top ? 'inset(0 0 52% 0)' : 'inset(48% 0 0 0)';
+      heroLayer.appendChild(h);
+      return h;
+    });
+    gsap.set(src, { opacity: 0 });
+    halves.forEach((h, k) => {
+      const dir = k === 0 ? -1 : 1;
+      gsap.to(h, {
+        x: dir * 30, y: dir * -22, rotation: dir * 2.2, opacity: 0,
+        duration: .34, ease: 'power2.out', onComplete: () => h.remove(),
+      });
+    });
+    // 顶上来的第一格
+    const c0 = makeHeroCard(0, false);
+    heroCards.push(c0);
+    const w0 = HERO_WALL[0];
+    c0._wx = w0.x; c0._wy = w0.y;
+    gsap.fromTo(c0, { scale: .2, opacity: 0, x: 0, y: 0 },
+      { scale: 1, opacity: 1, x: w0.x, y: w0.y, z: w0.z, rotation: w0.rz,
+        duration: .42, ease: 'appleSpring', delay: .10 });
+    heroMain = c0;
+  }
+
+  function heroGrow(n) {
+    while (heroCards.length < n) {
+      const i = heroCards.length;
+      const el = makeHeroCard(i, false);
+      heroCards.push(el);
+      const w = HERO_WALL[i];
+      // 槽位坐标必须当场写死：heroStutter 在 3.855 就会读它，
+      // 而补间要到 ~4.02 才结束 —— 写在 onComplete 里会把后 8 张卡拽回原点。
+      el._wx = w.x; el._wy = w.y;
+      gsap.fromTo(el,
+        { x: 0, y: 0, z: 0, scale: .22, rotation: 0, opacity: 0 },
+        { x: w.x, y: w.y, z: w.z, scale: 1, rotation: w.rz, opacity: 1,
+          duration: .38, ease: 'appleSpring', delay: (i % 4) * .03 });
+    }
+  }
+
+  // ── S3 冻结（抖动 + 文件名乱码）→ 坍缩 ──
+  function heroStutter() {
+    heroCards.forEach((el, i) => {
+      const bx = el._wx || 0, by = el._wy || 0, a = 3 + (i % 4);
+      gsap.timeline({ delay: (i % 6) * .012 })
+        .to(el, { x: bx + a,     y: by - a * .6, duration: .030, ease: 'none' })
+        .to(el, { x: bx - a,     y: by + a * .8, duration: .030, ease: 'none' })
+        .to(el, { x: bx + a * .5, y: by - a * .4, duration: .030, ease: 'none' })
+        .to(el, { x: bx,         y: by,          duration: .040, ease: 'none' });
+    });
+  }
+  function heroGarble() {
+    const CH = '▓▒░#%&@?*';
+    heroCards.forEach((el, i) => {
+      const nm = el.querySelector('.hc-name');
+      if (!nm) return;
+      if (nm._orig == null) nm._orig = nm.textContent;
+      const orig = nm._orig, o = { p: 0 };
+      gsap.to(o, {
+        p: 1, duration: .38, delay: (i % 5) * .018, ease: 'none',
+        onUpdate: () => {
+          const keep = Math.floor(orig.length * (1 - o.p));
+          let out = '';
+          for (let k = 0; k < orig.length; k++) {
+            out += (k < keep || orig[k] === '.')
+              ? orig[k]
+              : CH[(k * 7 + i * 13 + Math.floor(o.p * 44)) % CH.length];
+          }
+          nm.textContent = out;
+        },
+        onComplete: () => { nm.textContent = HERO_GARBLED[i % HERO_GARBLED.length]; },
+      });
+    });
+  }
+  function heroCollapse() {
+    if (!heroDot) {
+      heroDot = document.createElement('div');
+      heroDot.className = 'hero-dot';
+      heroLayer.appendChild(heroDot);
+    }
+    gsap.to(heroCards, {
+      x: 0, y: 0, z: 300, scale: .04, rotation: 0,
+      duration: .60, ease: 'power3.in',
+      stagger: { each: .014, from: 'center' },
+    });
+    gsap.fromTo(heroDot, { scale: 0, opacity: 0 },
+      { scale: 1, opacity: 1, duration: .30, delay: .34, ease: 'power2.out' });
+  }
+  function heroBurst() {
+    if (heroDot) {
+      gsap.fromTo(heroDot, { scale: 1, opacity: 1 },
+        { scale: 44, opacity: 0, duration: .46, ease: 'power2.out' });
+    }
+    heroCards.forEach(el => el.remove());
+    heroCards.length = 0;
+    heroMain = null;
+  }
+
+  // ── S4 光刃 / 斩断 ──
+  const BLADE_ANG = -19;
+  function bladeIn(fromLeft) {
+    const s = fromLeft ? -1 : 1;
+    gsap.set(heroBlade, { rotation: BLADE_ANG, x: s * 1500, y: s * -420, opacity: 0, scaleX: .55 });
+    gsap.timeline()
+      .to(heroBlade, { opacity: 1, duration: .10 })
+      .to(heroBlade, { x: s * 40, y: s * -14, scaleX: 1, duration: .44, ease: 'power3.out' })
+      .to(heroBlade, { x: 0, y: 0, duration: .28, ease: 'appleSoft' });
+  }
+  function bladeCut(dir) {
+    const s = dir || 1;
+    gsap.timeline()
+      .to(heroBlade, { x: s * 620, y: s * 210, duration: .15, ease: 'power4.in' })
+      .to(heroBlade, { opacity: 0, duration: .28, ease: 'power2.out' }, '+=.03');
+    heroFlash('cut', 1);
+  }
+  // 把一行字切成上下两半：clone 一份、各自 clip，动外层 wrapper，
+  // 这样不会碰到字自己那套 GSAP transform（位置能像素级对上）
+  function cutLine(el) {
+    const host = document.getElementById('txt');
+    const parts = [true, false].map(top => {
+      const wrap = document.createElement('div');
+      wrap.className = 'cut-wrap';
+      const c = el.cloneNode(true);
+      c.style.clipPath = top ? 'inset(0 0 57% 0)' : 'inset(43% 0 0 0)';
+      wrap.appendChild(c);
+      host.appendChild(wrap);
+      return wrap;
+    });
+    gsap.set(el, { opacity: 0 });
+    return parts;
+  }
+  function debrisFall() {
+    CUT.forEach((pair, i) => {
+      pair.forEach((w, k) => {
+        gsap.to(w, {
+          x: (k ? 1 : -1) * (330 + i * 55), y: (k ? 1 : -1) * (430 + i * 70),
+          rotation: (k ? 1 : -1) * (13 + i * 4), opacity: 0,
+          duration: 1.05, ease: 'power2.in',
+        });
+      });
+    });
+  }
+  function clearDebris() {
+    CUT.forEach(pair => pair.forEach(w => w.remove()));
+    CUT = [];
+  }
+  // H3：几块"幸存"的紫黑块飞回来，在"和紫黑块彻底告别"落地时当场溶解
+  function survivorsIn() {
+    const spots = [[-500,-236],[498,-198],[-412,232],[452,258],[6,-318]];
+    spots.forEach(([x, y], k) => {
+      const el = document.createElement('div');
+      el.className = 'hero-card';
+      el.style.width = '104px'; el.style.height = '104px';
+      el.innerHTML = '<div class="hc-glitch"></div>';
+      gsap.set(el, { xPercent: -50, yPercent: -50, x: x * 1.9, y: y * 1.9,
+        scale: .45, opacity: 0, rotation: 0 });
+      heroLayer.appendChild(el);
+      const gl = el.querySelector('.hc-glitch');
+      gsap.to(gl, { x: 'random(-13,13)', duration: .1, repeat: -1,
+        repeatRefresh: true, ease: 'none' });
+      gsap.to(el, { x, y, scale: 1, opacity: .92, rotation: (k % 2 ? 1 : -1) * 4,
+        duration: .5, delay: k * .05, ease: 'appleOut' });
+      gsap.to(el, { scale: 1.6, opacity: 0, rotation: (k % 2 ? 1 : -1) * 20,
+        duration: .72, delay: .78 + k * .07, ease: 'power2.in',
+        onComplete: () => el.remove() });
+    });
+  }
+
+  function heroOff() {
+    gsap.set(heroLayer, { opacity: 0 });
+    clearDebris();
+  }
+
+  // ── S6 收紧：阶梯式棘轮（不是平滑过渡，要看得见一格一格跳） ──
+  function heroRatchet() {
+    const g = document.querySelector('.p-grid'), gt = document.querySelector('.p-grid-top');
+    const T = [0, .207, .414, .621];
+    const SZ = [96, 132, 172, 214];
+    const LV = [.52, .70, .86, 1];
+    T.forEach((d, i) => {
+      gsap.to([g, gt], { backgroundSize: SZ[i] + 'px ' + SZ[i] + 'px',
+        duration: .13, delay: d, ease: 'power2.in' });
+      gsap.to(vigEl,  { opacity: .45 + LV[i] * .40, duration: .13, delay: d, ease: 'power2.in' });
+      gsap.to(moodEl, { opacity: .25 + LV[i] * .60, duration: .13, delay: d, ease: 'power2.in' });
+    });
+    gsap.to('#patterns', { filter: 'brightness(2.1)', duration: .9, ease: 'appleIn' });
+  }
+
   // 故障横条
   // ── 故障条 / 裂纹：预建对象池 ──
   // 原来每次调用都 createElement + appendChild + 动画结束后 remove()。
@@ -3568,7 +3957,10 @@ const APP_MODEL = {
     //   26.434s(b63) 最强鼓点 → 换服转场
     // ═══════════════════════════════════════════════════════════════
 
-    // ═══════════ ACT 1: 留白段 — 陈述背景与问题 (0 → 13.0s) ═══════════
+    // ═══════════ ACT 1: 巨物坠落 → 文件夹墙 → 斩断 (0 → 13.185s) ═══════════
+    // 前 11 秒只有一个任务：让人在 3 秒内产生"这我懂"的痛感，并且一直不给答案。
+    // 手法是把最无聊的电脑物件（文件夹）当成产品来打光 —— 巨物、有重量、会裂、会自我复制。
+    // 全程硬切入，没有淡入；每一刀都落在实测起音上。
     tl.add(() => { patternsOn(); chaosOn(); }, 0);
     tl.to(cam, { scale: 0.5, tz: -400, duration: 2.4, ease: 'appleSoft', onUpdate: applyCam, onComplete: applyCam }, 0);
     tl.to('.aura', { opacity: .5, duration: 2.4, ease: 'appleSoft' }, 0);
@@ -3576,75 +3968,93 @@ const APP_MODEL = {
     tl.to('.p-grid-top', { backgroundSize: '44px 44px', duration: 8, ease: 'appleSoft' }, 2.0);
     tl.to(chaosItems, { scale: 1.22, duration: 8, ease: 'appleSoft' }, 2.0);
     tl.to('#patterns', { filter: 'brightness(1.45)', duration: 7, ease: 'appleIn' }, 6.0);
+
     // 引子人声 hook 实测重复点（周期 3.278s，四次起音全部落在人声起音上）
-    //   1.640 / 4.920 / 8.200 / 11.470  —— 每重复一次 = 一个痛点，字幕就换在这里
     const H1 = 1.640, H2 = 4.920, H3 = 8.200, H4 = 11.470;
-    tl.add(() => scanSweep(), 0.30);
-    tl.add(() => scanSweep(), H2 - .18);
-    tl.add(() => scanSweep(), H3 - .18);
-    tl.add(() => scanSweep(), H4 - .18);
-    tl.add(() => ringPulse(0.4, 3.3, 0), 0.30);
-    tl.add(() => ringPulse(0.5, 3.3, 0), H2 - .18);
-    tl.add(() => ringPulse(0.6, 3.3, 0), H3 - .18);
-    tl.add(() => ringPulse(0.7, 3.1, 0), H4 - .18);
-    // 每重复一次，压力 +1
+
     // 引子跟着人声起音打脉冲 —— 叙述段也有卡点规律
     INTRO_PULSES.forEach(([tt, ss]) => {
       tl.add(() => beatPulse(Math.min(1, ss)), tt);
     });
-    tl.add(() => { glitchBurst(1); crackBurst(); pressureUp(0.30); }, H2);
-    tl.add(() => { glitchBurst(1.6); crackBurst(); pressureUp(0.60); }, H3);
-    tl.add(() => { glitchBurst(2.2); crackBurst(); pressureUp(0.92); }, H4);
-    tl.add(() => glitchBurst(2.6), 12.75);
 
-    // —— 冷开场：hook 进来之前的一口气（占引子那一段人声）——
-    const p0 = makeText({ size: 30, html: '玩过 TaCZ 的都知道', color: '#cfdfe0' });
-    tl.add(() => { txtIn(p0, .5, 0); blurOn(); }, 0.28);
-    tl.add(() => { txtOut(p0, .34, 0); blurOff(); }, H1 - .12);
+    // ── S1 · 0.00–1.16　巨物坠落 ──────────────────────────────────
+    // 第一个画面不是字，是一个巨大的文件夹从画面上方砸下来。
+    tl.add(() => heroOpen(), 0);
+    tl.add(() => { heroLand(); glitchBurst(1.5); scanSweep(); ringPulse(0.42, 2.3, 0); }, 0.15);
+    const q0 = makeText({ size: 30, html: '每个 TaCZ 玩家都见过{a}它{/a}', color: '#dfeaea', yOffset: 296 });
+    tl.add(() => txtIn(q0, .46, 0), 0.52);
+    tl.add(() => txtOut(q0, .26, 0), 1.00);
 
-    // —— 一段一个问题：四次 hook 重复，一段一个痛点 ——
-    // —— ① 手动替换（第 1 段 1.64 → 4.92）——
-    // 排版一：小字压在大字正上方，整体略偏上（编辑部式紧凑堆叠）
-    const p1a = makeText({ size: 26, html: '手动替换枪包', color: '#e39a9a', yOffset: -112 });
-    const p1b = makeText({ size: 42, html: '复制 — 粘贴 — 出错', color: '#b8c8ca', yOffset: 18 });
-    tl.add(() => txtIn(p1a, .48, 0), H1);
-    tl.add(() => txtIn(p1b, .48, .16), H1 + .24);
-    tl.to(cam, { rotX: 14, rotY: -8, duration: 2.6, ease: 'appleSoft', onUpdate: applyCam, onComplete: applyCam }, H1);
-    tl.add(() => { txtOut(p1a, .34, 0); txtOut(p1b, .34, 0); }, H2 - .12);
+    // ── S2 · 1.16–3.86　自我复制：1 → 2 → 4 → 8 → 16 ──────────────
+    tl.add(() => { heroSplit(); heroFlash('impact', .5); glitchBurst(1.2); }, 1.161);
+    tl.add(() => { heroGrow(4);  glitchBurst(1.6); scanSweep(); }, H1);
+    tl.add(() => { heroGrow(8);  glitchBurst(1.9); }, 2.554);
+    tl.add(() => { heroGrow(16); glitchBurst(2.5); crackBurst(); ringPulse(0.6, 2.0, 0); }, 3.553);
 
-    // —— ② 版本混乱（第 2 段 4.92 → 8.20）——
-    // 排版二：斜向错位 —— 小字左下、大字右上，打破居中的重复感
-    const p2a = makeText({ size: 25, html: '枪包版本混乱', color: '#e6cc8e', yOffset: 96, xOffset: -300 });
-    const p2b = makeText({ size: 44, html: '哪个才是最新？', color: '#b8c8ca', yOffset: -34, xOffset: 96 });
-    tl.add(() => txtIn(p2a, .48, 0), H2);
-    tl.add(() => txtIn(p2b, .48, .16), H2 + .24);
-    tl.to(cam, { rotX: 8, rotY: -16, duration: 2.6, ease: 'appleSoft', onUpdate: applyCam, onComplete: applyCam }, H2);
-    tl.add(() => { txtOut(p2a, .34, 0); txtOut(p2b, .34, 0); }, H3 - .12);
+    // 三个痛点跟着复制节奏一起堆上来（字号统一，读起来像清单）
+    // 先在下缘排成一条字幕带（墙占上半），爆开之后整组升到画面中心
+    const c1 = makeText({ size: 33, html: '复制 — 粘贴 — 出错',      color: '#ecd6d6', yOffset: 286 });
+    const c2 = makeText({ size: 33, html: '版本对不上',              color: '#e8dcc2', yOffset: 346 });
+    const c3 = makeText({ size: 33, html: '服务器一更新，全部重下', color: '#cfdce8', yOffset: 406 });
+    tl.add(() => txtIn(c1, .32, 0), H1 + .12);
+    tl.add(() => txtIn(c2, .32, 0), 2.554 + .12);
+    tl.add(() => txtIn(c3, .32, 0), 3.553 + .12);
 
-    // —— ③ 全量重下（第 3 段 8.20 → 11.47）——
-    // 排版三：大字居中偏上做主视觉，小字落到右下角做注脚
-    const p3a = makeText({ size: 24, html: '服务器更新枪包', color: '#adc2e0', yOffset: 132, xOffset: 316 });
-    const p3b = makeText({ size: 48, html: '又要全部重下？', color: '#b8c8ca', yOffset: -26, xOffset: -30 });
-    tl.add(() => txtIn(p3a, .48, 0), H3);
-    tl.add(() => txtIn(p3b, .48, .16), H3 + .24);
-    tl.to(cam, { rotX: 12, rotY: 6, duration: 2.6, ease: 'appleSoft', onUpdate: applyCam, onComplete: applyCam }, H3);
-    tl.add(() => { txtOut(p3a, .34, 0); txtOut(p3b, .34, 0); }, H4 - .12);
+    // ── S3 · 3.86–4.92　冻结（抖动 + 文件名烂掉）→ 坍缩成一点 ──────
+    tl.add(() => { heroStutter(); pressureUp(.45); }, 3.855);
+    // 名字要在观众看清之后才烂掉 —— 3.86 就乱码会把"版本混乱"这个笑点吃掉
+    tl.add(() => heroGarble(), 4.06);
+    tl.add(() => heroCollapse(), 4.319);
 
-    // —— ④ 第 4 段：纯背景蓄势（这一段一个字幕都不出）——
-    // 直接从问题跳到 UI 会削弱冲击力。先让背景自己憋满一个乐句：
-    // 图案收紧、故障叠加、镜头拉远、压力拉满，攒到 13.185s 主唱进的那一拍才放 UI。
-    tl.add(() => { glitchBurst(3.0); crackBurst(); pressureUp(1.0); }, H4);
-    tl.to('.p-grid', { backgroundSize: '118px 118px', duration: 1.72, ease: 'appleIn' }, H4);
-    tl.to('.p-grid-top', { backgroundSize: '118px 118px', duration: 1.72, ease: 'appleIn' }, H4);
-    tl.to('#patterns', { filter: 'brightness(2.15)', duration: 1.72, ease: 'appleIn' }, H4);
-    tl.to(chaosItems, { scale: 1.5, duration: 1.72, ease: 'appleIn' }, H4);
+    // ── S4 · 4.92–8.20　堆齐 → 光刃 → 一刀斩断 ────────────────────
+    tl.add(() => { heroBurst(); heroFlash('impact', 1); glitchBurst(3.2); crackBurst(); pressureUp(.78); }, H2);
+    // 墙一炸开，三条字幕从下缘整体升到画面中心 —— 舞台彻底交给它们
+    tl.to(c1, { y: -110, duration: .42, ease: 'appleOut' }, H2 + .04);
+    tl.to(c2, { y:    0, duration: .42, ease: 'appleOut' }, H2 + .04);
+    tl.to(c3, { y:  110, duration: .42, ease: 'appleOut' }, H2 + .04);
+    tl.to(cam, { rotX: 9, rotY: -4, duration: 1.2, ease: 'appleSoft', onUpdate: applyCam, onComplete: applyCam }, H2);
+
+    tl.add(() => bladeIn(true), 5.875);
+    tl.add(() => {
+      bladeCut(1);
+      CUT = [cutLine(c1), cutLine(c2), cutLine(c3)];
+      // 方向必须一致：上半整体沿法向往左上、下半往右下。
+      // 每行给不同偏移就散了，看起来像"字被复制了两份"，不像被一刀切开。
+      CUT.forEach((pair, i) => {
+        const d = i * .016;
+        // 沿刃线法向剪切：横向错位要大于纵向。
+        // 只做纵向分离会读成"同一行字出现了两份"，加了横向剪切才像被斜刀切开。
+        gsap.to(pair[0], { x: -30, y: -32 - i * 3, rotation: -1.7,
+          duration: .32, ease: 'power3.out', delay: d });
+        gsap.to(pair[1], { x:  30, y:  32 + i * 3, rotation:  1.7,
+          duration: .32, ease: 'power3.out', delay: d });
+      });
+    }, 6.525);
+    tl.add(() => debrisFall(), 7.15);   // 先让"切开"这个状态停 0.3s 看清，再散
+    tl.add(() => { glitchBurst(3.0); crackBurst(); pressureUp(.92); }, 7.686);
+
+    // ── S5 · 8.20–11.47　碎片散尽，反转提问 ───────────────────────
+    // 前面把问题砸碎，这里才给出路 —— 这句"只是拖一下呢？"直接为 22s 的拖拽演示埋扣。
+    const q1 = makeText({ size: 42, html: '从今天起，',            color: '#eef4f2', yOffset: -36 });
+    const q2 = makeText({ size: 42, html: '和{a}紫黑块{/a}彻底告别', color: '#eef4f2', yOffset: 44 });
+    tl.add(() => { clearDebris(); survivorsIn(); txtIn(q1, .55, 0); }, H3);
+    tl.add(() => txtIn(q2, .55, 0), 9.218);
+    tl.add(() => {
+      gsap.to([q1, q2], { scale: .78, y: '+=210', duration: .6, ease: 'appleSoft' });
+    }, 10.147);
+    tl.add(() => { txtOut(q1, .45, 0); txtOut(q2, .45, .08); }, 11.28);
+
+    // ── S6 · 11.47–13.185　收紧加速 → 第二刀 → 释放 ───────────────
+    // 网格一格格收紧、暗角一级级压下来，攒到主唱进的那一拍才放 UI。
+    tl.add(() => heroRatchet(), H4);
+    tl.add(() => { glitchBurst(2.6); crackBurst(); scanSweep(); }, 11.540);
+    tl.add(() => { glitchBurst(3.2); crackBurst(); ringPulse(1.0, 1.4, 0); }, 12.492);
+    tl.to(chaosItems, { scale: 1.55, duration: 1.72, ease: 'appleIn' }, H4);
     tl.to(cam, { scale: 0.40, tz: -540, rotX: 21, rotY: -27, duration: 1.72, ease: 'appleIn',
       onUpdate: applyCam, onComplete: applyCam }, H4);
-    tl.add(() => scanSweep(), H4);
-    tl.add(() => scanSweep(), H4 + .86);
-    tl.add(() => ringPulse(0.85, 1.7, 0), H4);
-    tl.add(() => ringPulse(1.05, 1.5, 0), H4 + .82);
-    tl.add(() => glitchBurst(3.4), 12.82);
+    tl.add(() => bladeIn(false), 12.40);
+    tl.add(() => { bladeCut(-1); heroOff(); }, 12.80);
+    tl.add(() => glitchBurst(3.4), 12.86);
     tl.add(() => blurOn(), 12.96);
 
     // ═══════════ ACT 2: 🎤 首拍重音 — 主唱进，主题登场 (13.185s = b31) ═══════════

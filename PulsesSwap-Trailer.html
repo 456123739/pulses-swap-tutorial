@@ -3527,8 +3527,8 @@ const APP_MODEL = {
     heroMain = makeHeroCard(0, true);
     heroCards.push(heroMain);
     gsap.fromTo(heroMain,
-      { y: -700, scale: 1.55, rotation: -5, opacity: 0 },
-      { y: 0, scale: 1, rotation: 0, opacity: 1, duration: .30, ease: 'power3.in' });
+      { y: -880, scale: 1.55, rotation: -5, opacity: 0 },
+      { y: -140, scale: 1, rotation: 0, opacity: 1, duration: .30, ease: 'power3.in' });
   }
   function heroLand() {
     const el = heroMain;
@@ -3538,7 +3538,7 @@ const APP_MODEL = {
       .to(el, { scaleX: 1.11, scaleY: .87, duration: .07, ease: 'power2.out' })
       .to(el, { scaleX: .97, scaleY: 1.05, duration: .09, ease: 'power2.inOut' })
       .to(el, { scaleX: 1, scaleY: 1, duration: .34, ease: 'elastic.out(1,.42)' });
-    groundRing(0, 230, 1);
+    groundRing(0, 96, .8);
     heroFlash('impact', .8);
     // 落地之后开始缓慢三维摆动：读起来是一块"东西"，不是一张平贴的色卡
     gsap.to(el, { rotationY: 11, rotationX: -6, duration: 2.9,
@@ -3899,9 +3899,15 @@ const APP_MODEL = {
     });
   }
 
-  function txtIn(el, dur, delay) {
+  function txtIn(el, dur, delay, from) {
     dur = dur || 1.1; delay = delay || 0;
     const chars = el._chars;
+    // from: { dx, dy } —— 从偏移位置滑到位，每句换一个方向，避免"永远同一个位置淡入"
+    if (from) gsap.set(el, {
+      x: (el._xOff || 0) + (from.dx || 0),
+      y: (el._yOff || 0) + (from.dy || 0),
+      opacity: 0,
+    });
     const base = {
       opacity: 1, scale: 1, filter: 'blur(0px)',
       xPercent: -50, yPercent: -50,
@@ -4029,14 +4035,16 @@ const APP_MODEL = {
     tl.add(() => { heroLand(); glitchBurst(1.5); scanSweep(); ringPulse(0.42, 2.3, 0); }, 0.15);
 
     // 四句话，每句 1.65–2.40s，都在舒适阅读速度内（5–7 字/秒）
-    const k1 = makeText({ size: 31, html: '这就是{a}紫黑块{/a}',       color: '#e6eeee', yOffset: 300 });
-    const k2 = makeText({ size: 31, html: '贴图没加载出来，它就顶上',   color: '#dfe8e8', yOffset: 300 });
-    const k3 = makeText({ size: 31, html: '{a}TaCZ{/a} 玩家尤其头疼',  color: '#dfe8e8', yOffset: 300 });
-    const k4 = makeText({ size: 31, html: '一个枪包对不上，满屏紫黑块', color: '#e8dcd2', yOffset: 300 });
-    tl.add(() => txtIn(k1, .40, 0), 0.30);
-    tl.add(() => { txtOut(k1, .26, 0); txtIn(k2, .40, .06); }, 1.95);
-    tl.add(() => { txtOut(k2, .26, 0); txtIn(k3, .40, .06); }, 4.35);
-    tl.add(() => { txtOut(k3, .26, 0); txtIn(k4, .40, .06); }, 6.05);
+    // 字号从 31 提到 48 —— 科普段是全片的"钩子"，不能按底部字幕的规格做。
+    // 位置也不再钉死在同一行：每句微调纵向、横向，入场方向各不相同。
+    const k1 = makeText({ size: 48, html: '你一定见过它 —— {a}紫黑块{/a}',   color: '#eaf2f2', yOffset: 288 });
+    const k2 = makeText({ size: 48, html: '模型或贴图没加载出来，它就顶上',   color: '#e2ecec', yOffset: 258, xOffset: -54 });
+    const k3 = makeText({ size: 48, html: '{a}TaCZ{/a} 玩家尤其头疼',        color: '#e2ecec', yOffset: 300, xOffset: 58 });
+    const k4 = makeText({ size: 48, html: '一个枪包对不上，就满屏紫黑块',     color: '#f2ded2', yOffset: 266 });
+    tl.add(() => txtIn(k1, .46, 0, { dy: 70 }), 0.30);
+    tl.add(() => { txtOut(k1, .24, 0); txtIn(k2, .46, .06, { dx: -210 }); }, 1.95);
+    tl.add(() => { txtOut(k2, .24, 0); txtIn(k3, .46, .06, { dx: 210 }); }, 4.35);
+    tl.add(() => { txtOut(k3, .24, 0); txtIn(k4, .46, .06, { dy: -74 }); }, 6.05);
     tl.add(() => txtOut(k4, .26, 0), 8.02);
     tl.add(() => { heroStutter(); glitchBurst(2.0); }, 7.60);   // 蓄势：块开始震
 
@@ -4048,9 +4056,9 @@ const APP_MODEL = {
     tl.to(cam, { rotX: 9, rotY: -4, duration: 1.2, ease: 'appleSoft', onUpdate: applyCam, onComplete: applyCam }, H3);
 
     // 三个问题**一起**上来，一起留到被划掉
-    const c1 = makeText({ size: 33, html: '复制 — 粘贴 — 出错',      color: '#ecd6d6', yOffset: 286 });
-    const c2 = makeText({ size: 33, html: '版本对不上',              color: '#e8dcc2', yOffset: 346 });
-    const c3 = makeText({ size: 33, html: '服务器一更新，全部重下', color: '#cfdce8', yOffset: 406 });
+    const c1 = makeText({ size: 36, html: '复制 — 粘贴 — 出错',      color: '#f0d8d8', yOffset: 276 });
+    const c2 = makeText({ size: 36, html: '版本对不上',              color: '#ecdfc4', yOffset: 340 });
+    const c3 = makeText({ size: 36, html: '服务器一更新，全部重下', color: '#d4e0ec', yOffset: 404 });
     tl.add(() => txtIn(c1, .34, 0),   H3 + .06);
     tl.add(() => txtIn(c2, .34, .10), H3 + .06);
     tl.add(() => txtIn(c3, .34, .20), H3 + .06);
@@ -4071,10 +4079,13 @@ const APP_MODEL = {
     tl.add(() => { txtOut(c1, .40, 0); txtOut(c2, .40, .06); txtOut(c3, .40, .12); }, 11.35);
 
     // ── 11.47 (H4) 起：告别 → 收紧 → 第二刀 → 释放 ─────────────────
-    const q2 = makeText({ size: 44, html: '和{a}紫黑块{/a}，彻底告别', color: '#eef4f2', yOffset: 30 });
-    tl.add(() => { clearDebris(); survivorsIn(); }, 10.95);
-    tl.add(() => txtIn(q2, .55, 0), H4);
-    tl.add(() => txtOut(q2, .45, 0), 12.90);
+    // 原来只有"和紫黑块，彻底告别"七个字，逻辑太省。
+    // 拆成完整的两句：先交代时间与对象，再落"说再见"，第二句正好咬在 H4 上。
+    const qA = makeText({ size: 46, html: '今天，你将和这些{a}紫黑块{/a}', color: '#eef4f2', yOffset: -48 });
+    const qB = makeText({ size: 56, html: '彻底说再见',                     color: '#f4fbf8', yOffset: 52 });
+    tl.add(() => { clearDebris(); survivorsIn(); txtIn(qA, .50, 0, { dy: 56 }); }, 11.20);
+    tl.add(() => txtIn(qB, .52, 0, { dy: 64 }), H4);
+    tl.add(() => { txtOut(qA, .42, 0); txtOut(qB, .42, .08); }, 12.92);
 
     tl.add(() => heroRatchet(), H4);
     tl.add(() => { glitchBurst(2.6); crackBurst(); scanSweep(); }, 11.540);
@@ -4098,7 +4109,7 @@ const APP_MODEL = {
     t0.style.textShadow = '0 0 50px rgba(127,212,193,.5)';
     // 严格落在第 31 拍（主唱进入的那一拍），绝不提前
     tl.add(() => txtIn(t0, .45, 0), ANCHOR_VOCAL);
-    tl.to(cam, { rotX: 10, rotY: -8, scale: 0.85, tz: -60, duration: .85, ease: 'appleOut', onUpdate: applyCam, onComplete: applyCam }, ANCHOR_VOCAL);
+    tl.to(cam, { rotX: 10, rotY: -8, scale: 0.85, tz: -60, ty: -108, duration: .85, ease: 'appleOut', onUpdate: applyCam, onComplete: applyCam }, ANCHOR_VOCAL);
     tl.add(() => { txtOut(t0, .6, 0); blurOff(); }, BEATP(38));
 
     const tEng = makeText({ big: true, size: 42, html: '枪包管理引擎 {a}PULSE ENGINE{/a}', color: '#f2faf7', yOffset: -46 });
@@ -4112,7 +4123,7 @@ const APP_MODEL = {
     // ═══════════ ACT 3: 功能演示 ═══════════
 
     // —— 拖入整合包 (b46 = 19.396s) ——
-    const t3 = makeText({ size: 28, html: '拖入即{a}就绪{/a} — 告别手动替换', color: '#e4f0ea' });
+    const t3 = makeText({ size: 34, yOffset: 336, html: '拖入即{a}就绪{/a} — 告别手动替换', color: '#e4f0ea' });
     tl.add(() => txtIn(t3, .7, 0), BEATP(46));
     tl.to(cam, Object.assign(focusCam('pack_drop', 1.5, 6, -14, 80), { duration: 1.3, ease: 'appleOut', onUpdate: applyCam, onComplete: applyCam }), BEATP(46));
     const _dr = wrect('pack_drop');
@@ -4143,12 +4154,12 @@ const APP_MODEL = {
     //   中间空了 271px —— 主角反而比配角小，这就是"swap 面板缩得太小"的来源。
     // 现在软件窗抬到 .78（实测约 864 宽），MC 保持 1.0 满尺寸不动，
     // 两者之间仍留 ~123px 呼吸位，不重叠、不裁边。
-    const SPLIT_CAM = { scale: .78, tx: -250, ty: -6, rotX: 6, rotY: -7, rotZ: 0, tz: -40 };
+    const SPLIT_CAM = { scale: .78, tx: -250, ty: -116, rotX: 6, rotY: -7, rotZ: 0, tz: -40 };
     // MC 退到旁侧（mcFocus(false) → .82）时空间更宽裕，软件窗再让一点。
-    const APP_CAM   = { scale: .78, tx: -260, ty: 34, rotX: 4, rotY: 6,  rotZ: 0, tz: -20 };
+    const APP_CAM   = { scale: .78, tx: -260, ty: -76, rotX: 4, rotY: 6,  rotZ: 0, tz: -20 };
     const T = APP_MODEL.theme;
 
-    const t4 = makeText({ size: 27, html: '每套枪包 = 一个{a}预设{/a}', color: '#e4f0ea', yOffset: 248 });
+    const t4 = makeText({ size: 34, html: '每套枪包 = 一个{a}预设{/a}', color: '#e4f0ea', yOffset: 336 });
     tl.add(() => txtIn(t4, .65, 0), BEATP(54));   // 原来 BEATP(56)，中间空了 1.24s 太长
     tl.add(() => { mcShow(); mcSetConnected(0); mcSetSelected(0); }, BEATP(54));
     tl.add(() => { renderer.setButtonEnabled('btn_open_tacz', true);
@@ -4183,12 +4194,12 @@ const APP_MODEL = {
     }, BEATP(60) + .3);
 
     // ═══════════ 🥁 26.434s = b63 实测最强鼓点 → 换服转场 ═══════════
-    const t5a = makeText({ size: 25, html: '想去生存服 — <b>先退服</b>', color: '#e4f0ea', yOffset: 248 });
+    const t5a = makeText({ size: 32, html: '想去生存服 — <b>先退服</b>', color: '#e4f0ea', yOffset: 336 });
     tl.add(() => { txtOut(t4, .4, 0); txtIn(t5a, .5, .03); mcHot(mcLeave, true); }, ANCHOR_IMPACT);
     tl.add(() => { mcHot(mcLeave, false); }, ANCHOR_IMPACT + .55);
     tl.add(() => mcLeaveSequence(.55, () => { mcSetConnected(-1); mcSetSelected(-1); }), ANCHOR_IMPACT + .6);
 
-    const t5b = makeText({ size: 25, html: '选中 <b>生存养老</b> 预设 — 枪包列表同步切换', color: '#e4f0ea', yOffset: 248 });
+    const t5b = makeText({ size: 32, html: '选中 <b>生存养老</b> 预设 — 枪包列表同步切换', color: '#e4f0ea', yOffset: 336 });
     tl.add(() => { txtOut(t5a, .4, 0); txtIn(t5b, .55, .06); mcFocus(false); }, BEATP(67));
     tl.to(cam, Object.assign({}, APP_CAM, { duration: .9, ease: 'appleOut', onUpdate: applyCam, onComplete: applyCam }), BEATP(66));
     tl.add(() => renderer.selectListItem('preset_list', 2), BEATP(67));
@@ -4215,7 +4226,7 @@ const APP_MODEL = {
     //   要把它摆到 (780, 500) → tx = 780−970.7 = −190.7，ty = 500−632 = −132。
     // 窗口此时 1229×821，右缘 1198 —— 资源管理器左缘 1224，不打架。
     const APPLY_CAM = { scale: 1.05, tx: -191, ty: -132, rotX: 4, rotY: 6, rotZ: 0, tz: -20 };
-    const t5c = makeText({ size: 25, html: '{a}一键替换{/a} — 换成生存服的枪包', color: '#e4f0ea', yOffset: 248 });
+    const t5c = makeText({ size: 32, html: '{a}一键替换{/a} — 换成生存服的枪包', color: '#e4f0ea', yOffset: 336 });
     tl.add(() => { txtOut(t5b, .4, 0); txtIn(t5c, .5, .03); }, BEATP(72));
     tl.to(cam, Object.assign({}, APPLY_CAM, { duration: .9, ease: 'appleOut', onUpdate: applyCam, onComplete: applyCam }), BEATP(69) + .2);
     tl.add(() => {
@@ -4247,7 +4258,7 @@ const APP_MODEL = {
     tl.add(() => { renderer.show('progress', false); renderer.show('progress_label', false); }, BEATP(76));
 
     // —— 回 MC 进服 (b78 = 32.644s) ——
-    const t5d = makeText({ size: 25, html: '回到游戏 — <b>直接进新服</b>', color: '#e4f0ea', yOffset: 248 });
+    const t5d = makeText({ size: 32, html: '回到游戏 — <b>直接进新服</b>', color: '#e4f0ea', yOffset: 336 });
     tl.add(() => { txtOut(t5c, .4, 0); txtIn(t5d, .5, .03); mcFocus(true); }, BEATP(78));
     tl.to(cam, Object.assign({}, SPLIT_CAM, { duration: .8, ease: 'appleOut', onUpdate: applyCam, onComplete: applyCam }), BEATP(78));
     tl.add(() => { mcSetSelected(1); mcHot(mcJoin, true); }, BEATP(79));
@@ -4284,13 +4295,13 @@ const APP_MODEL = {
     tl.add(() => txtOut(t5d, .4, 0), BEATP(84));      // 先让画面空一拍，金句才落得下来
     tl.add(() => { txtIn(t5e1, .6, .04); blurTopOn(); }, SLOGAN_IN);
     tl.add(() => txtIn(t5e2, .7, .3), SLOGAN_IN + .22);
-    tl.to(cam, { scale: .58, tx: -300, ty: -6, rotX: 4, rotY: -8, duration: 1.1, ease: 'appleOut', onUpdate: applyCam, onComplete: applyCam }, SLOGAN_IN);
+    tl.to(cam, { scale: .58, tx: -300, ty: -116, rotX: 4, rotY: -8, duration: 1.1, ease: 'appleOut', onUpdate: applyCam, onComplete: applyCam }, SLOGAN_IN);
     // 金句退场 → 高斯模糊同步撤掉（衬底继续保持关闭，靠 blur-top-active 类压住）
     // 退场点就是副歌进的那一拍，下一段动画同时跟上
     tl.add(() => { txtOut(t5e1, .5, 0); txtOut(t5e2, .5, .12); blurTopOff(); mcExitWorld(); mcHide(); }, SLOGAN_OUT);
 
     // —— 增量同步：跟着 40.305s 的副歌一起进 ——
-    const t6 = makeText({ size: 28, html: '增量{a}同步{/a} — 更新只传变化部分', color: '#e4f0ea' });
+    const t6 = makeText({ size: 34, yOffset: 336, html: '增量{a}同步{/a} — 更新只传变化部分', color: '#e4f0ea' });
     tl.add(() => txtIn(t6, .7, 0), SLOGAN_OUT);
     tl.to(cam, Object.assign(focusCam('import_drop', 1.45, 5, -12, 60),
       { duration: 1.2, ease: 'appleOut', onUpdate: applyCam, onComplete: applyCam }), SLOGAN_OUT);
@@ -4354,7 +4365,7 @@ const APP_MODEL = {
     // ═══════════ ACT 4: 能力展开 (47.0s → 88.0s) ═══════════
 
     // —— ① 预设体系：导出 / 分享 / 导入 (47.0 → 57.0) ——
-    const t8a = makeText({ size: 30, html: '一整套枪包，可以{a}导出成一个文件{/a}', color: '#e4f0ea' });
+    const t8a = makeText({ size: 34, yOffset: 336, html: '一整套枪包，可以{a}导出成一个文件{/a}', color: '#e4f0ea' });
     tl.add(() => {
       renderer.setListItems('preset_list', ['PVP 竞技', '生存养老', '竞速挑战', '建筑休闲']);
       renderer.setButtonEnabled('btn_export', true);
@@ -4382,7 +4393,7 @@ const APP_MODEL = {
     tl.add(() => { txtOut(t8a, .45, 0); txtOut(t8b, .45, .1); }, BEATP(125) - .2);
 
     // 原来这里到下一章有 5.2s 纯静止，补一段"导入别人的预设包"
-    const t8c = makeText({ size: 26, html: '别人的预设包，拖进来就能用', color: '#c2d6d2' });
+    const t8c = makeText({ size: 32, yOffset: 336, html: '别人的预设包，拖进来就能用', color: '#c2d6d2' });
     tl.add(() => txtIn(t8c, .55, 0), BEATP(126));
     tl.to(cam, Object.assign(focusCam('import_drop', 1.5, 6, -10, 70),
       { duration: 1.0, ease: 'appleOut', onUpdate: applyCam, onComplete: applyCam }), BEATP(126));
@@ -4408,7 +4419,7 @@ const APP_MODEL = {
     tl.add(() => { txtOut(t8c, .5, 0); renderer.setLabel('loading_label', ''); }, BEATP(131));
 
     // —— 导出这一段顺带点一下"校验"：导出前先扫一遍，缺漏立刻标出来 ——
-    const t8d = makeText({ size: 28, html: '导出前自动{a}校验{/a} — 所有缺漏，瞬间探明', color: '#e4f0ea' });
+    const t8d = makeText({ size: 34, yOffset: 336, html: '导出前自动{a}校验{/a} — 所有缺漏，瞬间探明', color: '#e4f0ea' });
     tl.add(() => txtIn(t8d, .55, 0), BEATP(131));
     // 镜头推到枪包列表，把"错误 → 正确"的过程演出来
     const _gpRow = (i) => { const l = renderer.get('gunpack_list'); return l ? l.children[i] : null; };
@@ -4449,7 +4460,7 @@ const APP_MODEL = {
     tl.add(() => explorerHide(), BEATP(137) - .10);   // 原来忘了收，一直留到片尾
 
     // —— ② 版本号 + 日志：出问题能定位 (57.0 → 66.5) ——
-    const t9a = makeText({ size: 30, html: '每个预设{a}独立版本号{/a} — 不会被别的服覆盖', color: '#e4f0ea' });
+    const t9a = makeText({ size: 34, yOffset: 336, html: '每个预设{a}独立版本号{/a} — 不会被别的服覆盖', color: '#e4f0ea' });
     tl.add(() => {
       renderer.setEntry('version_entry', 'v2.1.7');
       renderer.setLabel('info_version', '版本号: v2.1.7');
@@ -4479,7 +4490,7 @@ const APP_MODEL = {
     tl.add(() => txtOut(t9b, .45, 0), BEATP(161) - .2);
 
     // —— ③ 多服切换：想玩哪个就切哪个 (66.5 → 76.5) ——
-    const t10a = makeText({ size: 32, html: '{a}PVP · 生存 · 竞速{/a} — 想玩哪个切哪个', color: '#eef7f4' });
+    const t10a = makeText({ size: 36, yOffset: 336, html: '{a}PVP · 生存 · 竞速{/a} — 想玩哪个切哪个', color: '#eef7f4' });
     tl.add(() => { mcShow(); mcFocus(true); mcSetSelected(0); mcSetConnected(0); }, BEATP(161));
     tl.add(() => txtIn(t10a, .6, 0), BEATP(161));
     tl.to(cam, Object.assign(focusCam('preset_card', 1.30, 6, 10, 50),
@@ -4502,7 +4513,7 @@ const APP_MODEL = {
     tl.add(() => txtIn(t11b, .6, .18), BEATP(185) + .25);
     tl.add(() => { txtOut(t11a, .5, 0); txtOut(t11b, .5, .1); }, BEATP(197) - .2);   // 模糊保持到本章结束
 
-    const t11c = makeText({ size: 30, html: '数据{a}全部在本地{/a} — 不上传、不联网', color: '#e4f0ea' });
+    const t11c = makeText({ size: 34, yOffset: 336, html: '数据{a}全部在本地{/a} — 不上传、不联网', color: '#e4f0ea' });
     const t11d = makeText({ size: 22, html: '换服、重装、回滚，随时切回来', color: '#c2d6d2', yOffset: 58 });
     tl.add(() => txtIn(t11c, .6, 0), BEATP(197));
     tl.add(() => txtIn(t11d, .55, .16), BEATP(197) + .3);

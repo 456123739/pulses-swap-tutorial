@@ -363,6 +363,14 @@
     box-shadow: 0 0 26px rgba(200,255,246,.9), 0 0 90px rgba(127,212,193,.6);
     opacity: 0; will-change: transform, opacity;
   }
+  /* 结尾泛光：UI 窗口滑出后画面只剩署名，纯黑会让署名"飘在空中没有落点"。
+     几团很大的低频辉光压在署名下面、模糊层上面，用 screen 叠加只加光不遮暗。 */
+  #finaleGlow {
+    position: fixed; inset: 0; z-index: 36; pointer-events: none; opacity: 0;
+    mix-blend-mode: screen; overflow: hidden;
+  }
+  #finaleGlow i { position: absolute; display: block; border-radius: 50%; will-change: transform; }
+
   /* 冲击 / 斩击的屏幕闪光 */
   #heroFlash {
     position: fixed; inset: 0; z-index: 5; pointer-events: none; opacity: 0;
@@ -899,6 +907,7 @@
   <div id="vig"></div>
   <div id="hero"><div id="heroBlade"></div></div>
   <div id="heroFlash"></div>
+  <div id="finaleGlow"></div>
   <div id="patterns">
     <div class="p-grid"></div>
     <div class="p-grid-top"></div>
@@ -3758,6 +3767,36 @@ const APP_MODEL = {
     });
   }
 
+  // ═══ 结尾泛光：让署名有"光"可落 ═══
+  const finaleGlowEl = document.getElementById('finaleGlow');
+  (function buildFinaleGlow() {
+    // 第四团是很淡的品红 —— 紫黑块的余韵，收尾时轻轻回一次头
+    const G = [
+      { x: -430, y: -190, s: 1000, rgb: '127,212,193', a: .30 },
+      { x:  470, y:  130, s:  880, rgb: '91,168,154',  a: .26 },
+      { x:  140, y:  340, s:  760, rgb: '123,157,201', a: .20 },
+      { x: -270, y:  310, s:  540, rgb: '248,0,248',   a: .07 },
+    ];
+    G.forEach((g, i) => {
+      const el = document.createElement('i');
+      el.style.width = el.style.height = g.s + 'px';
+      el.style.left = '50%'; el.style.top = '50%';
+      el.style.marginLeft = (-g.s / 2 + g.x) + 'px';
+      el.style.marginTop  = (-g.s / 2 + g.y) + 'px';
+      el.style.background = 'radial-gradient(circle, rgba(' + g.rgb + ',' + g.a + '),' +
+        ' rgba(' + g.rgb + ',' + (g.a * .34).toFixed(3) + ') 44%, transparent 72%)';
+      finaleGlowEl.appendChild(el);
+      gsap.to(el, {
+        x: (i % 2 ? 1 : -1) * (46 + i * 14),
+        y: (i % 3 ? 1 : -1) * (34 + i * 10),
+        scale: 1.16, duration: 9 + i * 2.4, yoyo: true, repeat: -1,
+        ease: 'sine.inOut', delay: i * .8,
+      });
+    });
+  })();
+  function finaleGlowOn()  { gsap.to(finaleGlowEl, { opacity: 1,   duration: 2.4, ease: 'appleSoft' }); }
+  function finaleGlowOff() { gsap.to(finaleGlowEl, { opacity: .38, duration: 1.8, ease: 'appleSoft' }); }
+
   function heroOff() {
     gsap.set(heroLayer, { opacity: 0 });
     clearDebris();
@@ -4531,7 +4570,7 @@ const APP_MODEL = {
     // 结尾金句。原来的"让人忘记它的存在"把工具说小了 —— 这个软件做的事很显眼
     // （毫秒替换、增量同步），观众要的是"麻烦消失"，不是"工具消失"。
     // 现在这句把好处直接落到玩家身上，前后两个"把"字句对称，收得住也暖得住。
-    const tPhi = makeText({ size: 40, html: '把{a}麻烦{/a}留给工具，把游戏还给你', color: '#eaf4f1' });
+    const tPhi = makeText({ size: 40, html: '把麻烦留给{a}工具{/a}，把游戏还给{a}你{/a}', color: '#eaf4f1' });
     // 结尾必须保留真高斯模糊来营造高级感 —— 用 #blurTop（带 backdrop-filter），
     // 不是被我去掉模糊的 #blur。半径已降到 13px，视觉在、开销可控。
     tl.add(() => { txtIn(tPhi, .9, 0); blurTopOn(); }, 87.29);
@@ -4546,6 +4585,8 @@ const APP_MODEL = {
     tl.add(() => txtIn(t7c, .8, .34), 93.67);
     // 结尾让 UI 窗口整体滑出画面右侧，只留署名 —— 画面彻底交给文字
     tl.to(cam, { scale: 0.38, tx: 1460, tz: -300, rotX: 12, rotY: -16, duration: 3.4, ease: 'appleOut', onUpdate: applyCam, onComplete: applyCam }, 87.49);
+    tl.add(() => finaleGlowOn(), 88.60);     // 窗口滑出、画面转空的那一刻起光
+    tl.add(() => finaleGlowOff(), 98.15);    // 收尾压一档，别盖过署名
     tl.to(winEl, { opacity: 0, duration: 1.8, ease: 'appleIn' }, 88.19);
     // 三行同时在场、一起退场，收在音乐淡出的空隙里
     // 注意：全片结束前都不要解除 blur-top-active，否则退场中的字幕后面会闪回那团黑
